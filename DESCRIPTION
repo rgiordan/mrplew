@@ -1,0 +1,18 @@
+Package: mrplew
+Title: Mister P local equivalent weights
+Version: 0.0.0.1
+Authors@R:
+    person(given = "Ryan",
+           family = "Giordano",
+           role = c("aut", "cre"),
+           email = "rgiordano@berkeley.edu",
+           comment = c(ORCID = "0000-0002-5686-9210"))
+Description: Approximate weights for MrP analyses
+Depends: R (>= 4.1.0), dplyr, ggplot2, mvtnorm, tidybayes, einsum
+License: Apache 2.0
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Suggests:
+    testthat, purrr, rlang

@@ -87,33 +87,15 @@ if (FALSE) {
 num_draws <- 5000
 
 # Get the MrP posterior draws and weights for the logit model
-
-logit_post_file <- "logit_post.rds"
-
-if (file.exists(logit_post_file)) {
-  rds_load <- readRDS(logit_post_file)
-  logit_post <- rds_load$logit_post
-  sim_data <- rds_load$sim_data
-
-  agg_list <- AggregateSimulationData(sim_data)
-  survey_agg_df <- agg_list$survey_agg_df
-  pop_agg_df <- agg_list$pop_agg_df
-  joint_df <- agg_list$joint_df
-
-} else {
-  stan_time <- Sys.time()
-  logit_post <- brm(formula(reg_form), survey_df, family=bernoulli(link="logit"),
-                    chains=4, cores=4, seed=1543, warmup=500, iter=num_draws)
-  stan_time <- Sys.time() - stan_time
-  print(stan_time)
-  saveRDS(list(
-    logit_post=logit_post, 
-    sim_data=sim_data), 
-    file=logit_post_file)  
-}
+stan_time <- Sys.time()
+logit_post <- brm(formula(reg_form), survey_df, family=bernoulli(link="logit"),
+                  chains=4, cores=4, seed=1543, warmup=500, iter=num_draws,
+                  file="logit_posterior")
+stan_time <- Sys.time() - stan_time
+print(stan_time)
 
 if (FALSE) {
-  # Sanity check
+  # Sanity check that the logistic regression and posterior match
   plot(fixef(logit_post)[, "Estimate"], coefficients(logit_fit)); abline(0,1)
 }
 
@@ -125,39 +107,20 @@ logit_mcmc_mrp <- GetLogitMCMCWeights(
 cat(mean(logit_mcmc_mrp$mrp_draws), ", ", mrp_true, "\n")
 cat(mean(logit_mcmc_mrp$mrp_draws), ", ", mrp_ols_weights$mrp, "\n")
 if (FALSE) {
+  # Compare the logistic regression weights to the MrPlew MCMC weights
   qplot(logit_mcmc_mrp$w, w_opt) + AEqBLine()
 }
 
 
 
-################################################################
 # Get the MrP posterior draws and weights for the normal model
+stan_time <- Sys.time()
+lin_post <- brm(formula(reg_form), survey_df, family=gaussian(),
+                chains=4, cores=4, seed=1543, warmup=500, iter=num_draws,
+                file="ols_posterior")
+stan_time <- Sys.time() - stan_time
+print(stan_time)
 
-
-ols_post_file <- "ols_post.rds"
-
-if (file.exists(ols_post_file)) {
-  rds_load <- readRDS(ols_post_file)
-  lin_post <- rds_load$lin_post
-  sim_data <- rds_load$sim_data
-
-  agg_list <- AggregateSimulationData(sim_data)
-  survey_agg_df <- agg_list$survey_agg_df
-  pop_agg_df <- agg_list$pop_agg_df
-  joint_df <- agg_list$joint_df
-
-} else {
-  stan_time <- Sys.time()
-  lin_post <- brm(formula(reg_form), survey_df, family=gaussian(),
-                  chains=4, cores=4, seed=1543, warmup=500, iter=num_draws)
-  stan_time <- Sys.time() - stan_time
-  print(stan_time)
-  saveRDS(list(
-    lin_post=lin_post, 
-    sim_data=sim_data), 
-    file=ols_post_file)  
-}
-GetOLSMCMCWeights
 # GetLogitMCMCWeights also computes draws of MrP so there is no
 # ambiguity about how we are estimating it.
 lin_mcmc_mrp <- GetOLSMCMCWeights(
@@ -166,6 +129,7 @@ lin_mcmc_mrp <- GetOLSMCMCWeights(
 cat(mean(lin_mcmc_mrp$mrp_draws), ", ", mrp_true, "\n")
 cat(mean(lin_mcmc_mrp$mrp_draws), ", ", mrp_ols_weights$mrp, "\n")
 if (FALSE) {
+  # Compare the OLS equivalent weights to the MrPlew MCMC weights
   qplot(lin_mcmc_mrp$w, w_opt) + AEqBLine()
 }
 

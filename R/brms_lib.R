@@ -47,19 +47,30 @@ get_mrplew_logistic_brms <- function(brms_post, survey_df, pop_df, pop_w=NULL, s
 ######################
 # OLS
 
-# Get the components of a posterior draws from a linear brms model
-get_ols_likelihood_component_draws <- function(lin_post, survey_df) {
+# Get the likelihood components of  posterior draws from a linear brms model
+get_ols_likelihood_component_draws <- function(brms_post, survey_df) {
     # posterior_epred should be yhat.
     # posterior_linpred should be theta^T x_n.  
     # Draws are in rows and observations in columns.
 
+    stopifnot(class(brms_post) == "brmsfit")
+    check_ols_family(brms_post)
+
     # get_variables(lin_post)
-    sigma_draws <- lin_post %>% spread_draws(sigma) %>% pull(sigma)
-    yhat_draws <- posterior_linpred(lin_post, newdata=survey_df)
+    sigma_draws <- brms_post %>% spread_draws(sigma) %>% pull(sigma)
+    yhat_draws <- posterior_linpred(brms_post, newdata=survey_df)
     stopifnot(ncol(yhat_draws) == nrow(survey_df))
-    y <- get_response(lin_post)
+    y <- get_response(brms_post)
     resid_draws <- (y - t(yhat_draws)) %>% t()
     return(list(resid_draws=resid_draws, sigma_draws=sigma_draws, yhat_draws=yhat_draws))
+}
+
+#'@export
+get_gaussian_dloglikdy_draws <- function(resid_draws, sigma_draws) {
+    # The log likelihood derivative for the n^th datapoint is
+    # sigma^{-2} (y_n - \hat{y}_n)
+    dloglikdy_survey_draws <- -1 * resid_draws / (sigma_draws^2)
+    return(dloglikdy_survey_draws)
 }
 
 
@@ -69,8 +80,6 @@ get_ols_likelihood_component_draws <- function(lin_post, survey_df) {
 #' @param survey_df The survey dataframe
 #' @param pop_df The population dataframe
 #' @param pop_w Optional.  The weight given to each row of pop_df.  Defaults to ones.
-#' @param re_formula Optional.  Formula containing group-level effects to be considered in the prediction. If `NULL` (default), include all group-level effects; if `NA`, include no group-level effects.
-#' @param allow_new_levels Optional.  If true, allow new levels of group-level effects in prediction stage.
 #'
 #' @return Draws from the MrP estimate, and the weight vector
 #' whose n-th entry is d E[MrP | X, Y] / d y_n.
@@ -84,10 +93,9 @@ get_ols_mcmc_weights <- function(brms_post, survey_df, pop_df, pop_w=NULL,
     check_ols_family(brms_post)
 
     yhat_pop_draws <- posterior_epred(brms_post, newdata=pop_df)
-    # The log likelihood derivative for the n^th datapoint is
-    # sigma^{-2} (y_n - \hat{y}_n)
     ols_ll_draws <- get_ols_likelihood_component_draws(brms_post, survey_df)
-    dloglikdy_survey_draws <- -1 * ols_ll_draws$resid_draws / (ols_ll_draws$sigma_draws^2)
+    dloglikdy_survey_draws <- get_gaussian_dloglikdy_draws(
+        resid_draws=ols_ll_draws$resid_draws, sigma_draws=ols_ll_draws$sigma_draws)
 
     result_list <- get_mrplew_mcmc(
         yhat_pop_draws=yhat_pop_draws,
@@ -96,6 +104,8 @@ get_ols_mcmc_weights <- function(brms_post, survey_df, pop_df, pop_w=NULL,
 
     if (save_draws) {
         yhat_survey_draws <- expit(dloglikdy_survey_draws)
+        result_list$sigma_draws <- ols_ll_draws$sigma_draws
+        result_list$resid_draws <- ols_ll_draws$resid_draws
         result_list$yhat_pop_draws <- yhat_pop_draws
         result_list$yhat_survey_draws <- yhat_survey_draws
         result_list$dloglikdy_survey_draws <- dloglikdy_survey_draws

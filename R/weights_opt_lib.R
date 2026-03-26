@@ -66,7 +66,7 @@ GetOLSWeights <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
 #'@export
 GetLogitWeights <- function(logit_fit, survey_df, pop_df, pop_w=NULL) {
     stopifnot(class(logit_fit) == c("glm", "lm"))
-    CheckLogitFamily(logit_fit)
+    check_logit_family(logit_fit)
     pop_w <- GetPopulationWeights(pop_df, pop_w)
 
     # Strip the response from the formula since it might be missing

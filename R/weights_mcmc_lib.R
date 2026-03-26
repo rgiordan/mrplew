@@ -26,7 +26,7 @@ GetLogitMCMCWeights <- function(logit_post, survey_df, pop_df, pop_w=NULL,
                                 allow_new_levels=FALSE) {
     stopifnot(class(logit_post) == "brmsfit")
 
-    CheckLogitFamily(logit_post)
+    check_logit_family(logit_post)
 
     pop_w <- GetPopulationWeights(pop_df, pop_w)
 
@@ -71,7 +71,7 @@ GetOLSLikelihoodComponentDraws <- function(lin_post, survey_df) {
     sigma_draws <- lin_post %>% spread_draws(sigma) %>% pull(sigma)
     yhat_draws <- posterior_linpred(lin_post, newdata=survey_df)
     stopifnot(ncol(yhat_draws) == nrow(survey_df))
-    y <- GetResponse(lin_post)
+    y <- get_response(lin_post)
     resid_draws <- (y - t(yhat_draws)) %>% t()
     return(list(resid_draws=resid_draws, sigma_draws=sigma_draws, yhat_draws=yhat_draws))
 }
@@ -96,12 +96,12 @@ GetOLSLikelihoodComponentDraws <- function(lin_post, survey_df) {
 GetOLSMCMCWeights <- function(lin_post, survey_df, pop_df, pop_w=NULL, 
                               re_formula=NULL, allow_new_levels=FALSE) {
     stopifnot(class(lin_post) == "brmsfit")
-    CheckOLSFamily(lin_post)
+    check_ols_family(lin_post)
 
     # TODO: here and elsewhere check that "y" is actually the response in the
     # formula, or else extract it.
 
-    # This used to be necessary but is now covered by GetResponse()
+    # This used to be necessary but is now covered by get_response()
     # stopifnot("y" %in% names(survey_df))
     # print("Warning: the response variable must be y for this function to work!")
 

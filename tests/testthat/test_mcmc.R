@@ -75,7 +75,7 @@ test_that("mcmc_runs", {
       # Sanity check that I'm computing the log likelihood correctly
       # (I'm not taking into account the prior so there will be some small mismatch)
       eta_draws <- posterior_linpred(post, newdata=sim_data$survey_df)
-      y <- GetResponse(post)
+      y <- get_response(post)
       lp_mat <- (y * t(eta_draws) - log(1 + exp(t(eta_draws)))) %>% t()
       lp_draws <- apply(lp_mat, FUN=sum, MARGIN=1)
       lp_draws_check <- post %>% spread_draws(lp__) %>% pull(lp__)

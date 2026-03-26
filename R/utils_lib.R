@@ -1,24 +1,25 @@
 library(tidyverse)
 
 
+
+
 # Use pop_w for weights if specfied, otherwise use 
 # a vector of ones as long as pop_df.
-GetPopulationWeights <- function(pop_df, pop_w=NULL) {
-    if (is.null(pop_w)) {
-        pop_w <- rep(1, nrow(pop_df)) / nrow(pop_df)
-    }
-
-    weight_sum <- sum(pop_w)
-    if (abs(weight_sum - 1) > 1e-6) {
-        warning(sprintf("The population weights do not sum to one: %f", weight_sum))
-    }
-    return(pop_w)
+get_population_weights <- function(pop_df, pop_w=NULL) {
+  if (is.null(pop_w)) {
+    pop_w <- rep(1, nrow(pop_df)) / nrow(pop_df)
+  }
+  
+  weight_sum <- sum(pop_w)
+  if (abs(weight_sum - 1) > 1e-6) {
+    warning(sprintf("The population weights do not sum to one: %f", weight_sum))
+  }
+  return(pop_w)
 }
 
 
 
-
-CheckLogitFamily <- function(logit_fit) {
+check_logit_family <- function(logit_fit) {
     logit_family <- family(logit_fit)
     if (!(logit_family$family %in% c("binomial", "bernoulli"))) {
       warning(sprintf("Family is not binomial or bernoulli (%s)", logit_family$family))
@@ -32,7 +33,7 @@ CheckLogitFamily <- function(logit_fit) {
 
 
 
-CheckOLSFamily <- function(lin_post) {
+check_ols_family <- function(lin_post) {
     post_family <- family(lin_post)
     if (post_family$family != "gaussian") {
       warning(sprintf("Family is not gaussian (%s)", post_family$family))
@@ -51,7 +52,7 @@ CheckOLSFamily <- function(lin_post) {
 #'
 #' @return The numeric response variable used for the posterior fitting
 #'@export
-GetResponse <- function(post) {
+get_response <- function(post) {
     return(as.numeric(standata(post)$Y))
 }
 
@@ -69,9 +70,9 @@ GetResponse <- function(post) {
 #' @return A list containing the draws of the covariance cov_samples
 #' and the estimated Monte Carlo sample errors in cov_se.
 #' @export
-GetBlockBootstrapCovarianceDraws <- function(draws1_mat, draws2_mat,
-                                             num_blocks, num_draws,
-                                             show_progress_bar=FALSE) {
+get_block_bootstrap_covariance_draws <- function(draws1_mat, draws2_mat,
+                                                 num_blocks, num_draws,
+                                                 show_progress_bar=FALSE) {
   
   if (nrow(draws1_mat) != nrow(draws2_mat)) {
     stop("draws1_mat and draws2_mat must have the same number of rows.")

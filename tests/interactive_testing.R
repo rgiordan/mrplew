@@ -44,7 +44,7 @@ draws1_mat <- draws$d1
 draws2_mat <- draws$d2
 cov_fun <- cov
 show_progress_bar <- TRUE
-cov_se_list <- GetBlockBootstrapCovarianceDraws(
+cov_se_list <- get_block_bootstrap_covariance_draws(
   draws1_mat, draws2_mat, num_blocks, num_draws, show_progress_bar=TRUE
 )
 

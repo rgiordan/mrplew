@@ -31,17 +31,36 @@ SafeGetEtaDraws <- function(mrplew_list, post, survey_df) {
 }
 
 
-#' Use mrplew to check invariance to weighting datapoints by covariate
-#' (i.e. distribution shift aligned with a covariate).
+
+#' Use MrPaw to check covariate balance.
 #' 
-#' @param infl_list The output of the EvalInfluenceFunction function
+#' @param mrpaw_list The output of one of the Get*MCMCWeights functions
 #' @param x_sur A matrix of some regressors in the survey data
+#' @param x_pop A matrix of the same regressors in the population data
+#' @param pop_w (Optional) A vector of population weights. Taken to be all one if NULL.
 #'
-#' @return The derivative of MrP in the direction of a distribution
-#' shift aligned with each regressor in x_sur.
+#' @return The weighted average regressors in each regressor matrix, where the
+#' weights in the survey are given by the MrP affine weights.
+#' The regressor matrices might be made with a call to model.matrix using the
+#' same formula for each dataset.
 #' 
 #' @export
-CheckDatapointWeighting <- function(infl_list, x_sur) {
-    stopifnot(nrow(x_sur) == length(infl_list$infl_vec))
-    return(colSums(x_sur * infl_list$infl_vec))
+CheckCovariateBalance <- function(mrpaw_list, x_sur, x_pop, pop_w=NULL) {
+  pop_w <- GetPopulationWeights(x_pop, pop_w)
+  stopifnot(ncol(x_pop) == ncol(x_sur))
+  stopifnot(nrow(x_sur) == length(mrpaw_list$w))
+  if (any(colnames(x_pop) != colnames(x_sur))) {
+    warning_text <- paste0(
+      "The column names of the covariates do not match: ",
+      paste0("(", colnames(x_pop), ")", collapse=", "),
+      " versus ",
+      paste0("(", colnames(x_sur), ")", collapse=", ")
+    )
+    warn(warning_text)
+  }
+  return(list(
+    x_mean_pop=colSums(pop_w * x_pop),
+    x_mean_sur=colSums(mrpaw_list$w * x_sur)
+  ))
 }
+

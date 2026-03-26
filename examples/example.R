@@ -109,12 +109,14 @@ if (FALSE) {
 balance_reg_form <-
   formula(sprintf( "y ~ 1 + (%s)^%d", g_sum, degree + 2))
 
-ols_balance_df <- check_covariate_balance(
+ols_balance_list <- check_covariate_balance(
   mrplew_list=ols_mrplew, 
   survey_df=survey_df, 
   pop_df=pop_agg_df, 
   reg_form=balance_reg_form, 
-  pop_w=pop_agg_df$w)$balance_df %>%
+  pop_w=pop_agg_df$w)
+ols_balance_df <-
+  ols_balance_list$balance_df %>%
   mutate(pct=100 * difference / mrp_true)
 
 mcmc_balance_df <- check_covariate_balance(
@@ -126,9 +128,19 @@ mcmc_balance_df <- check_covariate_balance(
   mutate(pct=100 * difference / mrp_true)
 
 
+opt_balance_df <- get_balance_df(
+  x1=ols_balance_list$x_pop,
+  x2=ols_balance_list$x_survey, 
+  w1=pop_agg_df$w, 
+  w2=w_opt) %>%
+  rename(pop=x1bar, survey=x2bar) %>%
+  mutate(pct=100 * difference / mrp_true)
+
+
 balance_df <- rbind(
   ols_balance_df %>% mutate(name="ols"),
-  mcmc_balance_df %>% mutate(name="mcmc"))
+  mcmc_balance_df %>% mutate(name="logistic mcmc"),
+  opt_balance_df %>% mutate(name="optimal"))
 jitter_amount <- max(abs(balance_df$pct)) * 5e-4
 ggplot(balance_df) +
   geom_bar(

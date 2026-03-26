@@ -115,7 +115,7 @@ ols_balance_df <- check_covariate_balance(
   pop_df=pop_agg_df, 
   reg_form=balance_reg_form, 
   pop_w=pop_agg_df$w)$balance_df %>%
-  mutate(prop=difference / pop)
+  mutate(pct=100 * difference / mrp_true)
 
 mcmc_balance_df <- check_covariate_balance(
   mrplew_list=logit_mcmc_mrplew, 
@@ -123,7 +123,21 @@ mcmc_balance_df <- check_covariate_balance(
   pop_df=pop_agg_df, 
   reg_form=balance_reg_form, 
   pop_w=pop_agg_df$w)$balance_df %>%
-  mutate(prop=difference / pop)
+  mutate(pct=100 * difference / mrp_true)
+
+
+balance_df <- rbind(
+  ols_balance_df %>% mutate(name="ols"),
+  mcmc_balance_df %>% mutate(name="mcmc"))
+jitter_amount <- max(abs(balance_df$pct)) * 5e-4
+ggplot(balance_df) +
+  geom_bar(
+    aes(fill=name, y=pct + jitter_amount, x=reg),
+    position="dodge", stat="identity") +
+  coord_flip() +
+  xlab(NULL) +
+  labs(fill="Method") +
+  ylab("Imbalance (% of MrP truth)")
 
 
 

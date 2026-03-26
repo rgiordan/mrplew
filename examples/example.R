@@ -5,24 +5,20 @@ library(tidybayes)
 library(mrplew)
 library(gridExtra)
 
-AEqBLine <- function() {
-  geom_abline(aes(slope=1, intercept=0))
-}
-
 ##########################################
-# Simulate some categories
-# 
+# Simulate some MrP data
 
 set.seed(25338)
 
 # induce group probabilities with a truncated normal
-n_groups <- 2
+n_groups <- 4
 degree <- 2
-n_obs <- 1000
-n_obs_pop <- 100000
+n_obs <- 2000
+n_obs_pop <- 5000
 
 # Simulate some data.
-sim_data <- simulate_survey_data(n_groups, n_obs, n_obs_pop, degree=degree)
+sim_data <- 
+  mrplew::simulate_survey_data(n_groups, n_obs, n_obs_pop, degree=degree)
 
 # Survey data:
 survey_df <- sim_data$survey_df
@@ -32,6 +28,7 @@ pop_df <- sim_data$pop_df
 
 mrp_true <- with(pop_df, mean(ey))
 print(mrp_true)
+mrp_df <- data.frame(truth=mrp_true)
 
 # If there is imbalance, this should differ from the true mrp.
 with(survey_df, mean(ey))
@@ -47,42 +44,35 @@ pop_agg_df <- agg_list$pop_agg_df
 joint_df <- agg_list$joint_df
 w_opt <-
   survey_df %>%
-  inner_join(select(joint_df, s, w_opt), by="s") %>%
+  left_join(select(joint_df, s, w_opt), by="s") %>%
   pull(w_opt)
 
+weights_df <- data.frame(w_opt=w_opt)
+if (FALSE) {
+  # Look at the dispersion of the optimal weights
+  hist(w_opt, 100)
+}
 
 #####################################
-# Run logistic and OLS regression
-
+# Run OLS regression and get equivalent weights
 
 g_sum <- paste(sim_data$group_effects$g_cols, collapse=" + ")
 reg_form <-sprintf( "y ~ 1 + (%s)^%d", g_sum, degree)
 
-logit_fit <- glm(formula(reg_form), survey_df, family=binomial(link="logit"))
 lm_fit <- lm(formula(reg_form), survey_df)
+ols_mrplew <- get_mrplew_lm(lm_fit, survey_df, pop_df)
+mrp_df$ols <- ols_mrplew$mrp
 
-coefficients(lm_fit)
-coefficients(logit_fit)
-
-mrp_ols_weights <- get_ols_weights(lm_fit, survey_df, pop_df)
-mrp_logit_weights <- get_logit_weights(logit_fit, survey_df, pop_df)
-
-cat(paste(
-  mrp_ols_weights$mrp, 
-  mrp_logit_weights$mrp, 
-  mrp_true, collapse=", "), "\n")
+weights_df$w_ols <- ols_mrplew$mrplew_w
 if (FALSE) {
-  grid.arrange(
-    qplot(mrp_ols_weights$w, w_opt) + AEqBLine(),
-    qplot(mrp_logit_weights$w, w_opt) + AEqBLine()
-  )
+  ggplot(aes(x=w_opt, y=w_ols), data=weights_df) +
+    geom_point() + geom_abline()
 }
 
 
 
-
 ##########################################
-# Run posterior samplers
+# Run logistic MCMC posterior samplers
 
 num_draws <- 5000
 
@@ -94,46 +84,46 @@ logit_post <- brm(formula(reg_form), survey_df, family=bernoulli(link="logit"),
 stan_time <- Sys.time() - stan_time
 print(stan_time)
 
-if (FALSE) {
-  # Sanity check that the logistic regression and posterior match
-  plot(fixef(logit_post)[, "Estimate"], coefficients(logit_fit)); abline(0,1)
-}
-
 # get_logit_mcmc_weights also computes draws of MrP so there is no
 # ambiguity about how we are estimating it.
-logit_mcmc_mrp <- get_logit_mcmc_weights(
+logit_mcmc_mrplew <- get_mrplew_logistic_brms(
   logit_post, survey_df, pop_agg_df, pop_w=pop_agg_df$w)
+mrp_df$mcmc <- mean(logit_mcmc_mrplew$mrp_draws)
+weights_df$w_mcmc <- logit_mcmc_mrplew$mrplew_w
 
-cat(mean(logit_mcmc_mrp$mrp_draws), ", ", mrp_true, "\n")
-cat(mean(logit_mcmc_mrp$mrp_draws), ", ", mrp_ols_weights$mrp, "\n")
+print(mrp_df)
+
 if (FALSE) {
   # Compare the logistic regression weights to the MrPlew MCMC weights
-  qplot(logit_mcmc_mrp$w, w_opt) + AEqBLine()
+  ggplot(aes(x=w_opt), data=weights_df) +
+    geom_point(aes(y=w_ols, color="ols")) + 
+    geom_point(aes(y=w_mcmc, color="mcmc logistic")) + 
+    geom_abline()
 }
 
 
 
-# Get the MrP posterior draws and weights for the normal model
-stan_time <- Sys.time()
-lin_post <- brm(formula(reg_form), survey_df, family=gaussian(),
-                chains=4, cores=4, seed=1543, warmup=500, iter=num_draws,
-                file="ols_posterior")
-stan_time <- Sys.time() - stan_time
-print(stan_time)
+##########################################
+# Check balance
 
-# get_logit_mcmc_weights also computes draws of MrP so there is no
-# ambiguity about how we are estimating it.
-lin_mcmc_mrp <- get_ols_mcmc_weights(
-  lin_post, survey_df, pop_agg_df, pop_w=pop_agg_df$w)
+balance_reg_form <-
+  formula(sprintf( "y ~ 1 + (%s)^%d", g_sum, degree + 2))
 
-cat(mean(lin_mcmc_mrp$mrp_draws), ", ", mrp_true, "\n")
-cat(mean(lin_mcmc_mrp$mrp_draws), ", ", mrp_ols_weights$mrp, "\n")
-if (FALSE) {
-  # Compare the OLS equivalent weights to the MrPlew MCMC weights
-  qplot(lin_mcmc_mrp$w, w_opt) + AEqBLine()
-}
+ols_balance_df <- check_covariate_balance(
+  mrplew_list=ols_mrplew, 
+  survey_df=survey_df, 
+  pop_df=pop_agg_df, 
+  reg_form=balance_reg_form, 
+  pop_w=pop_agg_df$w)$balance_df %>%
+  mutate(prop=difference / pop)
 
-
+mcmc_balance_df <- check_covariate_balance(
+  mrplew_list=logit_mcmc_mrplew, 
+  survey_df=survey_df, 
+  pop_df=pop_agg_df, 
+  reg_form=balance_reg_form, 
+  pop_w=pop_agg_df$w)$balance_df %>%
+  mutate(prop=difference / pop)
 
 
 

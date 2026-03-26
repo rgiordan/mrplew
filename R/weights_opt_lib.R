@@ -27,7 +27,7 @@ check_column_names <- function(x_ols, x_pop) {
 #' whose n-th entry is d MrP / d y_n.
 #'
 #'@export
-get_ols_weights <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
+get_mrplew_lm <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
     stopifnot(class(lm_fit) == "lm")
     pop_w <- get_population_weights(pop_df, pop_w)
 
@@ -37,10 +37,11 @@ get_ols_weights <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
     x_ols <- model.matrix(reg_form, survey_df)
     x_pop <- model.matrix(reg_form, pop_df)
 
+    # If these column names don't match then the computation
+    # doesn't make sense.  It has to be up to the user to fix it.
     check_column_names(x_ols, x_pop)
 
-    # The OLS model weights have a closed form.  (The logistic ones do
-    # too, but I'll just put this in for now)
+    # The OLS model weights have a closed form.
     # d \hat\beta / dy_n = (X^T X)^{-1} x_n
     # MrP = \sum_s w_s x_s^T \hat\beta
 
@@ -49,7 +50,7 @@ get_ols_weights <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
     xtx <- t(x_ols) %*% x_ols
     mrp_ols <- t(pop_w) %*% yhat_pop %>% as.numeric()
     w_ols <- t(pop_w) %*% x_pop %*% solve(xtx, t(x_ols)) %>% as.numeric()
-    return(list(mrp=mrp_ols, w=w_ols))
+    return(list(mrp=mrp_ols, mrplew_w=w_ols))
 }
 
 
@@ -64,7 +65,7 @@ get_ols_weights <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
 #' whose n-th entry is d MrP / d y_n.
 #'
 #'@export
-get_logit_weights <- function(logit_fit, survey_df, pop_df, pop_w=NULL) {
+get_mrplew_logistic_glm <- function(logit_fit, survey_df, pop_df, pop_w=NULL) {
     stopifnot(class(logit_fit) == c("glm", "lm"))
     check_logit_family(logit_fit)
     pop_w <- get_population_weights(pop_df, pop_w)
@@ -94,7 +95,7 @@ get_logit_weights <- function(logit_fit, survey_df, pop_df, pop_w=NULL) {
 
     mrp_logit <- sum(pop_w * phat_pop)
 
-    return(list(mrp=mrp_logit, w=w_logit))
+    return(list(mrp=mrp_logit, mrplew_w=w_logit))
 }
 
 

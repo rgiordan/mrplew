@@ -102,15 +102,16 @@ get_balance_df <- function(x1, x2, w1, w2) {
 
 
 #' @export
-check_covariate_balance <- function(mrpaw_list, survey_df, pop_df, reg_form, pop_w=NULL) {
+check_covariate_balance <- function(mrplew_list, survey_df, pop_df, reg_form, pop_w=NULL) {
   x_balance <- get_consistent_regressors(form=reg_form, df1=pop_df, df2=survey_df)
   x_pop <- x_balance$x1
   x_survey <- x_balance$x2
-  stopifnot(sum(is.na(x_poststrat)) == 0)
+  stopifnot(sum(is.na(x_pop)) == 0)
   stopifnot(sum(is.na(x_survey)) == 0)
   pop_w <- get_population_weights(pop_df, pop_w)
   balance_df <- 
-    get_balance_df(x1=x_pop, x2=x_survey, w1=pop_w, w2=mrpaw_list$w) %>%
-    rename(poststrat=x1bar, survey=x2bar)
+    get_balance_df(x1=x_pop, x2=x_survey, 
+                   w1=pop_w, w2=mrplew_list$mrplew_w) %>%
+    rename(pop=x1bar, survey=x2bar)
   return(list(balance_df=balance_df, x_pop=x_pop, x_survey=x_survey))
 }

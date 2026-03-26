@@ -9,12 +9,12 @@ GetTestData <- function() {
   n_obs <- 1000
   n_obs_pop <- 10 * n_obs
 
-  sim_data <- SimulateSurveyData(n_groups, n_obs, n_obs_pop, degree=degree)
+  sim_data <- simulate_survey_data(n_groups, n_obs, n_obs_pop, degree=degree)
   return(sim_data)
 }
 
 
-AggregateSimulationData <- function(sim_data, resp="y") {
+aggregate_simuilation_data <- function(sim_data, resp="y") {
 
   ##########################################################
   # Aggregate across groups to check 

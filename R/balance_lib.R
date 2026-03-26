@@ -4,8 +4,6 @@
 #' @param vec2 A vector to be converted to a factor
 #'
 #' @return A list containing consistent factor versions of vec1 and vec2
-#'
-#'@export
 convert_to_consistent_factors <- function(vec1, vec2) {
   all_unique_levels <- sort(unique(c(as.character(vec1), as.character(vec2))))
   factor1 <- factor(vec1, levels = all_unique_levels)
@@ -21,8 +19,6 @@ convert_to_consistent_factors <- function(vec1, vec2) {
 #' @param df A dataframe
 #'
 #' @return The output of model.matrix(form, df) but respecting na.action.
-#'
-#'@export
 safe_model_matrix <- function(form, df, na.action=na.pass) {
   # It appears that model.matrix does not actually respect na.fail or na.pass.
   # foo <- data.frame(x=c(1, 2, NA))
@@ -47,7 +43,7 @@ safe_model_matrix <- function(form, df, na.action=na.pass) {
 #' @return A list containing regressor dataframes x1 and x2 for df1 and df2
 #' respectively with consistent encodings.  NAs will be included.
 #'
-#'@export
+#' @export
 get_consistent_regressors <- function(form, df1, df2, frame=FALSE) {
   # Generate design matrices from a formula in a way
   # that ensures the same encoding conventions are used for
@@ -92,6 +88,7 @@ check_balance_matrices <- function(x1, x2) {
   }
 }
 
+#'@export
 get_balance_df <- function(x1, x2, w1, w2) {
   check_balance_matrices(x1, x2)
   stopifnot(nrow(x1) == length(w1))
@@ -104,15 +101,16 @@ get_balance_df <- function(x1, x2, w1, w2) {
 }
 
 
-check_covariate_balance <- function(mrpaw_list, survey_df, poststrat_df, reg_form, pop_w=NULL) {
-  x_balance <- get_consistent_regressors(form=reg_form, df1=poststrat_df, df2=survey_df)
-  x_poststrat <- x_balance$x1
+#' @export
+check_covariate_balance <- function(mrpaw_list, survey_df, pop_df, reg_form, pop_w=NULL) {
+  x_balance <- get_consistent_regressors(form=reg_form, df1=pop_df, df2=survey_df)
+  x_pop <- x_balance$x1
   x_survey <- x_balance$x2
   stopifnot(sum(is.na(x_poststrat)) == 0)
   stopifnot(sum(is.na(x_survey)) == 0)
-  pop_w <- get_population_weights(poststrat_df, pop_w)
+  pop_w <- get_population_weights(pop_df, pop_w)
   balance_df <- 
-    get_balance_df(x1=x_poststrat, x2=x_survey, w1=pop_w, w2=mrpaw_list$w) %>%
+    get_balance_df(x1=x_pop, x2=x_survey, w1=pop_w, w2=mrpaw_list$w) %>%
     rename(poststrat=x1bar, survey=x2bar)
-  return(list(balance_df=balance_df, x_poststrat=x_poststrat, x_survey=x_survey))
+  return(list(balance_df=balance_df, x_pop=x_pop, x_survey=x_survey))
 }

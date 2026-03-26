@@ -36,7 +36,7 @@ test_that("mcmc_runs", {
     agg_list <- rds_load$agg_list
 
     y_col <- f_lhs(as.formula(formula(post)))
-    agg_list <- AggregateSimulationData(sim_data, y_col)
+    agg_list <- aggregate_simuilation_data(sim_data, y_col)
 
     # Test that this runs and produces weights of the correct length.
     mcmc_mrp <- mrplewFunction(
@@ -70,7 +70,7 @@ test_that("mcmc_runs", {
       # posterior_epred should be yhat.
       # posterior_linpred should be theta^T x_n.  
       # Draws are in rows and observations in columns.
-      AssertNearlyEqual(Expit(linpred_pop), yhat_pop)
+      AssertNearlyEqual(expit(linpred_pop), yhat_pop)
 
       # Sanity check that I'm computing the log likelihood correctly
       # (I'm not taking into account the prior so there will be some small mismatch)

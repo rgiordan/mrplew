@@ -22,7 +22,7 @@ n_obs <- 1000
 n_obs_pop <- 100000
 
 # Simulate some data.
-sim_data <- SimulateSurveyData(n_groups, n_obs, n_obs_pop, degree=degree)
+sim_data <- simulate_survey_data(n_groups, n_obs, n_obs_pop, degree=degree)
 
 # Survey data:
 survey_df <- sim_data$survey_df
@@ -37,7 +37,7 @@ print(mrp_true)
 with(survey_df, mean(ey))
 
 # Accumulate data within group.  This helps speed up MCMC prediction.
-agg_list <- AggregateSimulationData(sim_data)
+agg_list <- aggregate_simuilation_data(sim_data)
 survey_agg_df <- agg_list$survey_agg_df
 pop_agg_df <- agg_list$pop_agg_df
 

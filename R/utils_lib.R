@@ -1,6 +1,16 @@
 library(tidyverse)
 
 
+#'@export
+logit <- function(x) {
+  return(log(x / (1 - x)))
+}
+
+
+#'@export
+expit <- function(x) {
+  return(exp(x) / (1 + exp(x)))
+}
 
 
 # Use pop_w for weights if specfied, otherwise use 
@@ -28,8 +38,6 @@ check_logit_family <- function(logit_fit) {
       warning(sprintf("Link is not logit (%s)", logit_family$link))
     }
 }
-
-
 
 
 

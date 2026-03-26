@@ -18,7 +18,7 @@ test_that("ols_works", {
   # Run correctly specified logistic and OLS regression
 
   sim_data <- GetTestData()
-  agg_list <- AggregateSimulationData(sim_data)
+  agg_list <- aggregate_simuilation_data(sim_data)
   group_effects <- sim_data$group_effects
 
   g_cols <- sim_data$group_effects$g_cols

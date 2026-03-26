@@ -25,7 +25,7 @@ test_that("simulations_correct", {
   n_obs <- 100000
   n_obs_pop <- 100000
 
-  sim_data <- SimulateSurveyData(n_groups, n_obs, n_obs_pop, degree=degree)
+  sim_data <- simulate_survey_data(n_groups, n_obs, n_obs_pop, degree=degree)
   group_effects <- sim_data$group_effects
   survey_df <- sim_data$survey_df
   pop_df <- sim_data$pop_df
@@ -46,7 +46,7 @@ test_that("simulations_correct", {
   ##########################################################
   # Aggregate across groups to check 
 
-  # Note that the check column is not in the AggregateSimulationData function
+  # Note that the check column is not in the aggregate_simuilation_data function
   survey_agg_df <-
     survey_df %>%
     group_by(pick(all_of(c(g_cols, "s")))) %>%

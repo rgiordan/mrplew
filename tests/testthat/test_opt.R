@@ -28,10 +28,10 @@ test_that("ols_works", {
   for (method in c("ols", "logit")) {
     if (method == "ols") {
       fit <- lm(formula(reg_form), sim_data$survey_df)
-      mrp_weights <- GetOLSWeights(fit, sim_data$survey_df, sim_data$pop_df)
+      mrp_weights <- get_ols_weights(fit, sim_data$survey_df, sim_data$pop_df)
     } else if (method == "logit") {
       fit <- glm(formula(reg_form), sim_data$survey_df, family=binomial(link="logit"))
-      mrp_weights <- GetLogitWeights(fit, sim_data$survey_df, sim_data$pop_df)
+      mrp_weights <- get_logit_weights(fit, sim_data$survey_df, sim_data$pop_df)
     } else {
       expect_true(FALSE, "This should never happen")
     }

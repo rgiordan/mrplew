@@ -21,10 +21,10 @@ test_that("mcmc_runs", {
   for (method in c("ols", "logit", "ols_response_name", "logit_response_name")) {
     print(sprintf("Testing MCMC for method %s", method))
     if (method %in% c("ols", "ols_response_name")) {
-      mrplewFunction <- GetOLSMCMCWeights
+      mrplewFunction <- get_ols_mcmc_weights
       model_type <- "ols"
     } else if (method %in% c("logit", "logit_response_name")) {
-      mrplewFunction <- GetLogitMCMCWeights
+      mrplewFunction <- get_logit_mcmc_weights
       model_type <- "logit"
     } else {
       expect_true(FALSE, sprintf("mcmc_runs: Unknown method %s", method))
@@ -57,7 +57,7 @@ test_that("mcmc_runs", {
 
       # Sanity check that I'm computing the log likelihood correctly
       # (I'm not taking into account the prior so there will be some small mismatch)
-      ols_ll_draws <- GetOLSLikelihoodComponentDraws(post, sim_data$survey_df)
+      ols_ll_draws <- get_ols_likelihood_component_draws(post, sim_data$survey_df)
 
       sigma_draws <- ols_ll_draws$sigma_draws
       resid_draws <- ols_ll_draws$resid_draws

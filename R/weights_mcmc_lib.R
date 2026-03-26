@@ -21,14 +21,14 @@ library(brms)
 #' @importFrom brms posterior_epred
 #' @importFrom brms posterior_linpred
 #'@export
-GetLogitMCMCWeights <- function(logit_post, survey_df, pop_df, pop_w=NULL, 
+get_logit_mcmc_weights <- function(logit_post, survey_df, pop_df, pop_w=NULL, 
                                 save_preds=FALSE, re_formula=NULL,
                                 allow_new_levels=FALSE) {
     stopifnot(class(logit_post) == "brmsfit")
 
     check_logit_family(logit_post)
 
-    pop_w <- GetPopulationWeights(pop_df, pop_w)
+    pop_w <- get_population_weights(pop_df, pop_w)
 
     # posterior_epred should be yhat.
     # posterior_linpred should be theta^T x_n.  
@@ -62,7 +62,7 @@ GetLogitMCMCWeights <- function(logit_post, survey_df, pop_df, pop_w=NULL,
 
 
 
-GetOLSLikelihoodComponentDraws <- function(lin_post, survey_df) {
+get_ols_likelihood_component_draws <- function(lin_post, survey_df) {
     # posterior_epred should be yhat.
     # posterior_linpred should be theta^T x_n.  
     # Draws are in rows and observations in columns.
@@ -93,7 +93,7 @@ GetOLSLikelihoodComponentDraws <- function(lin_post, survey_df) {
 #' @importFrom brms posterior_epred
 #' @importFrom brms posterior_linpred
 #'@export
-GetOLSMCMCWeights <- function(lin_post, survey_df, pop_df, pop_w=NULL, 
+get_ols_mcmc_weights <- function(lin_post, survey_df, pop_df, pop_w=NULL, 
                               re_formula=NULL, allow_new_levels=FALSE) {
     stopifnot(class(lin_post) == "brmsfit")
     check_ols_family(lin_post)
@@ -105,12 +105,12 @@ GetOLSMCMCWeights <- function(lin_post, survey_df, pop_df, pop_w=NULL,
     # stopifnot("y" %in% names(survey_df))
     # print("Warning: the response variable must be y for this function to work!")
 
-    pop_w <- GetPopulationWeights(pop_df, pop_w)
+    pop_w <- get_population_weights(pop_df, pop_w)
     yhat_pop <- posterior_epred(lin_post, newdata=pop_df, re_formula=re_formula,
                                 allow_new_levels=allow_new_levels)
 
     mrp_draws_lin <- yhat_pop %*% pop_w
-    ols_ll_draws <- GetOLSLikelihoodComponentDraws(lin_post, survey_df)
+    ols_ll_draws <- get_ols_likelihood_component_draws(lin_post, survey_df)
 
     # The log likelihood derivative for the n^th datapoint is
     # sigma^{-2} (y_n - \hat{y}_n)

@@ -64,8 +64,8 @@ lm_fit <- lm(formula(reg_form), survey_df)
 coefficients(lm_fit)
 coefficients(logit_fit)
 
-mrp_ols_weights <- GetOLSWeights(lm_fit, survey_df, pop_df)
-mrp_logit_weights <- GetLogitWeights(logit_fit, survey_df, pop_df)
+mrp_ols_weights <- get_ols_weights(lm_fit, survey_df, pop_df)
+mrp_logit_weights <- get_logit_weights(logit_fit, survey_df, pop_df)
 
 cat(paste(
   mrp_ols_weights$mrp, 
@@ -99,9 +99,9 @@ if (FALSE) {
   plot(fixef(logit_post)[, "Estimate"], coefficients(logit_fit)); abline(0,1)
 }
 
-# GetLogitMCMCWeights also computes draws of MrP so there is no
+# get_logit_mcmc_weights also computes draws of MrP so there is no
 # ambiguity about how we are estimating it.
-logit_mcmc_mrp <- GetLogitMCMCWeights(
+logit_mcmc_mrp <- get_logit_mcmc_weights(
   logit_post, survey_df, pop_agg_df, pop_w=pop_agg_df$w)
 
 cat(mean(logit_mcmc_mrp$mrp_draws), ", ", mrp_true, "\n")
@@ -121,9 +121,9 @@ lin_post <- brm(formula(reg_form), survey_df, family=gaussian(),
 stan_time <- Sys.time() - stan_time
 print(stan_time)
 
-# GetLogitMCMCWeights also computes draws of MrP so there is no
+# get_logit_mcmc_weights also computes draws of MrP so there is no
 # ambiguity about how we are estimating it.
-lin_mcmc_mrp <- GetOLSMCMCWeights(
+lin_mcmc_mrp <- get_ols_mcmc_weights(
   lin_post, survey_df, pop_agg_df, pop_w=pop_agg_df$w)
 
 cat(mean(lin_mcmc_mrp$mrp_draws), ", ", mrp_true, "\n")

@@ -3,7 +3,7 @@ library(tidyverse)
 
 
 
-CheckColumnNames <- function(x_ols, x_pop) {
+check_column_names <- function(x_ols, x_pop) {
     # Right now we assume that the model matrices are the same.
     # If they aren't we throw an error.
     if (!all(colnames(x_ols) == colnames(x_pop))) {
@@ -27,9 +27,9 @@ CheckColumnNames <- function(x_ols, x_pop) {
 #' whose n-th entry is d MrP / d y_n.
 #'
 #'@export
-GetOLSWeights <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
+get_ols_weights <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
     stopifnot(class(lm_fit) == "lm")
-    pop_w <- GetPopulationWeights(pop_df, pop_w)
+    pop_w <- get_population_weights(pop_df, pop_w)
 
     # Strip the response from the formula since it might be missing
     # in the population dataframe.
@@ -37,7 +37,7 @@ GetOLSWeights <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
     x_ols <- model.matrix(reg_form, survey_df)
     x_pop <- model.matrix(reg_form, pop_df)
 
-    CheckColumnNames(x_ols, x_pop)
+    check_column_names(x_ols, x_pop)
 
     # The OLS model weights have a closed form.  (The logistic ones do
     # too, but I'll just put this in for now)
@@ -64,10 +64,10 @@ GetOLSWeights <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
 #' whose n-th entry is d MrP / d y_n.
 #'
 #'@export
-GetLogitWeights <- function(logit_fit, survey_df, pop_df, pop_w=NULL) {
+get_logit_weights <- function(logit_fit, survey_df, pop_df, pop_w=NULL) {
     stopifnot(class(logit_fit) == c("glm", "lm"))
     check_logit_family(logit_fit)
-    pop_w <- GetPopulationWeights(pop_df, pop_w)
+    pop_w <- get_population_weights(pop_df, pop_w)
 
     # Strip the response from the formula since it might be missing
     # in the population dataframe.
@@ -81,7 +81,7 @@ GetLogitWeights <- function(logit_fit, survey_df, pop_df, pop_w=NULL) {
     x_ols <- model.matrix(reg_form, survey_df)
     x_pop <- model.matrix(reg_form, pop_df)
 
-    CheckColumnNames(x_ols, x_pop)
+    check_column_names(x_ols, x_pop)
 
     # Mrp = pi^T expit(x_pop beta)
     # d Mrp / d betahat = pi^T (v_pop . x_pop)

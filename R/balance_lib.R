@@ -115,3 +115,12 @@ check_covariate_balance <- function(mrplew_list, survey_df, pop_df, reg_form, po
     rename(pop=x1bar, survey=x2bar)
   return(list(balance_df=balance_df, x_pop=x_pop, x_survey=x_survey))
 }
+
+
+#' @export
+compute_frequentist_sd <- function(w, resid) {
+  stopifnot(length(w) == length(resid))
+  n_obs <- length(w)
+  infl <- n_obs * resid * w
+  return(sqrt(mean(infl^2)))
+}

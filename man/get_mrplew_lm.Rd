@@ -4,7 +4,7 @@
 \alias{get_mrplew_lm}
 \title{Get mrplew weights for the OLS estimator.}
 \usage{
-get_mrplew_lm(lm_fit, survey_df, pop_df, pop_w = NULL)
+get_mrplew_lm(lm_fit, survey_df, pop_df, pop_w = NULL, save_terms = FALSE)
 }
 \arguments{
 \item{lm_fit}{The output of \code{lm}}

@@ -152,4 +152,15 @@ ggplot(balance_df) +
   ylab("Imbalance (% of MrP truth)")
 
 
+compute_mrplew_variance_estimate <- function(w, y, yhat) {
+  stopifnot(length(y) == length(w))
+  stopifnot(length(yhat) == length(w))
+  resid <- y - yhat
+  weps <- resid * w
+  weps_bar <- mean(weps)
+  return(mean(weps^2) - weps_bar^2)
+}
+
+compute_mrplew_variance_estimate(ols_mrplew$mrplew_w, y=survey_df$y, yhat)
+
 

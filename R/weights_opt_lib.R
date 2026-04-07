@@ -27,7 +27,7 @@ check_column_names <- function(x_ols, x_pop) {
 #' whose n-th entry is d MrP / d y_n.
 #'
 #'@export
-get_mrplew_lm <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
+get_mrplew_lm <- function(lm_fit, survey_df, pop_df, pop_w=NULL, save_terms=FALSE) {
     stopifnot(class(lm_fit) == "lm")
     pop_w <- get_population_weights(pop_df, pop_w)
 
@@ -50,7 +50,16 @@ get_mrplew_lm <- function(lm_fit, survey_df, pop_df, pop_w=NULL) {
     xtx <- t(x_ols) %*% x_ols
     mrp_ols <- t(pop_w) %*% yhat_pop %>% as.numeric()
     w_ols <- t(pop_w) %*% x_pop %*% solve(xtx, t(x_ols)) %>% as.numeric()
-    return(list(mrp=mrp_ols, mrplew_w=w_ols))
+
+    result_list <- list(mrp=mrp_ols, mrplew_w=w_ols)
+    if (save_terms) {
+        result_list$yhat_pop <- yhat_pop
+        result_list$yhat_survey <- x_ols %*% betahat
+        result_list$x_survey <- x_ols
+        result_list$x_pop <- x_pop
+        result_list$xtx <- xtx
+    }
+    return(result_list)
 }
 
 

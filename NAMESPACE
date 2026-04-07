@@ -2,6 +2,7 @@
 
 export(aggregate_simuilation_data)
 export(check_covariate_balance)
+export(compute_frequentist_sd)
 export(draw_correlated_groups)
 export(draw_group_effects)
 export(draw_response)

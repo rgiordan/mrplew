@@ -33,6 +33,7 @@ get_mrplew_mcmc <- function(yhat_pop_draws, dloglikdy_survey_draws, pop_w=NULL) 
         mrp_draws=mrp_draws,
         mrplew_w=mrplew_w
     )
+    return(result_list)
 }
 
 

@@ -1,9 +1,29 @@
 
+
+#' Get mrplew weights for the brms logistic MCMC estimator.
+#'
+#' @param brms_post The output of `brm(..., survey_df, family=binomial(link="logit"))`
+#' @param pop_df The population dataframe
+#' @param pop_w  The weight given to each row of pop_df.  Defaults to ones.
+#' @param ...  Additional arguments passed to posterior_epred
+#'
+#' @return Draws from the MrP estimate
+#'
+#' @importFrom brms posterior_epred
+#'@export
+get_mrp_draws_brms <- function(brms_post, pop_df=NULL, pop_w=NULL, ...) {
+    stopifnot(class(brms_post) == "brmsfit")
+    yhat_pop_draws <- posterior_epred(brms_post, newdata=pop_df, ...)
+    mrp_draws <- get_mrp_draws(yhat_pop_draws=yhat_pop_draws, pop_w=pop_w)
+    return(mrp_draws)
+}
+
 #' Get mrplew weights for the brms logistic MCMC estimator.
 #'
 #' @param brms_post The output of `brm(..., survey_df, family=binomial(link="logit"))`
 #' @param survey_df The survey dataframe
-#' @param pop_df The population dataframe
+#' @param mrp_draws Optional. Draws of the mrp estimate from the same posterior, brms_post.
+#' @param pop_df Optional.  The population dataframe
 #' @param pop_w Optional.  The weight given to each row of pop_df.  Defaults to ones.
 #' @param save_draws Optional.  If true, save the posterior predictions for re-use.
 #'
@@ -13,27 +33,32 @@
 #' @importFrom brms posterior_epred
 #' @importFrom brms posterior_linpred
 #'@export
-get_mrplew_logistic_brms <- function(brms_post, survey_df, pop_df, pop_w=NULL, save_draws=FALSE) {
+get_mrplew_logistic_brms <- function(brms_post, survey_df, 
+                                     mrp_draws=NULL, 
+                                     pop_df=NULL, pop_w=NULL, 
+                                     save_draws=FALSE) {
     stopifnot(class(brms_post) == "brmsfit")
     check_logit_family(brms_post)
 
-    # posterior_epred should be yhat.
-    # posterior_linpred should be theta^T x_i.  
+    if (is.null(mrp_draws) & is.null(pop_df)) {
+        stop("You must specify either mrp_draws or pop_df.")
+    }
+    if (is.null(mrp_draws)) {
+        mrp_draws <- get_mrp_draws_brms(brms_post=brms_post, 
+                                        pop_df=pop_df,
+                                        pop_w=pop_w)
+    }
+
     # Draws are in rows and observations in columns.
-
-    yhat_pop_draws <- posterior_epred(brms_post, newdata=pop_df)
-
     # d log p(y | theta) / d y_i = theta^T x_i
     dloglikdy_survey_draws <- posterior_linpred(brms_post, newdata=survey_df)
 
     result_list <- get_mrplew_mcmc(
-        yhat_pop_draws=yhat_pop_draws,
-        dloglikdy_survey_draws=dloglikdy_survey_draws,
-        pop_w=pop_w)
+        mrp_draws=mrp_draws,
+        dloglikdy_survey_draws=dloglikdy_survey_draws)
 
     if (save_draws) {
         yhat_survey_draws <- expit(dloglikdy_survey_draws)
-        result_list$yhat_pop_draws <- yhat_pop_draws
         result_list$yhat_survey_draws <- yhat_survey_draws
         result_list$dloglikdy_survey_draws <- dloglikdy_survey_draws
     }

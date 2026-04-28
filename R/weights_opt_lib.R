@@ -34,6 +34,8 @@ get_mrplew_lm <- function(lm_fit, survey_df, pop_df, pop_w=NULL, save_terms=FALS
     # Strip the response from the formula since it might be missing
     # in the population dataframe.
     reg_form <- update(formula(lm_fit), NULL ~ .)
+
+    # TODO: replace this with get_consistent_regressors
     x_ols <- model.matrix(reg_form, survey_df)
     x_pop <- model.matrix(reg_form, pop_df)
 

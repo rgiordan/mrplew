@@ -4,14 +4,12 @@
 \alias{get_mrplew_mcmc}
 \title{Get mrplew weights for MCMC estimators.}
 \usage{
-get_mrplew_mcmc(yhat_pop_draws, dloglikdy_survey_draws, pop_w = NULL)
+get_mrplew_mcmc(mrp_draws, dloglikdy_survey_draws)
 }
 \arguments{
-\item{yhat_pop_draws}{MCMC draws x Population size matrix of yhat posterior draws}
+\item{mrp_draws}{MCMC draws of the MrP estimator}
 
 \item{dloglikdy_survey_draws}{MCMC draws x Survey size matrix of draws of d log p(y_i | theta) / dy_i}
-
-\item{pop_w}{Optional.  The weight given to each row of pop_df.  Defaults to ones.}
 }
 \value{
 Draws from the MrP estimate, and the weight vector

@@ -7,7 +7,8 @@
 get_mrplew_logistic_brms(
   brms_post,
   survey_df,
-  pop_df,
+  mrp_draws = NULL,
+  pop_df = NULL,
   pop_w = NULL,
   save_draws = FALSE
 )
@@ -17,7 +18,9 @@ get_mrplew_logistic_brms(
 
 \item{survey_df}{The survey dataframe}
 
-\item{pop_df}{The population dataframe}
+\item{mrp_draws}{Optional. Draws of the mrp estimate from the same posterior, brms_post.}
+
+\item{pop_df}{Optional.  The population dataframe}
 
 \item{pop_w}{Optional.  The weight given to each row of pop_df.  Defaults to ones.}
 

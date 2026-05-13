@@ -88,6 +88,11 @@ check_balance_matrices <- function(x1, x2) {
   }
 }
 
+#' @param x1 A matrix of regressor values
+#' @param x2 A matrix of regressor values consistently coded with x1
+#' @param w1 A vector of normalized weights for x1, summing to ~ 1
+#' @param w1 A vector of normalized weights for x2, summing to ~ 1
+#' 
 #'@export
 get_balance_df <- function(x1, x2, w1, w2) {
   check_balance_matrices(x1, x2)
@@ -101,26 +106,38 @@ get_balance_df <- function(x1, x2, w1, w2) {
 }
 
 
+#' @param mrplew_list The output of a MrPlew function, e.g. get_mrplew_logistic_brms
+#' @param survey_df The survey dataframe
+#' @param pop_df The population dataframe
+#' @param pop_frac Optional.  The fraction of weight given to each row of pop_df.  Defaults to 1/N.
+#' 
 #' @export
-check_covariate_balance <- function(mrplew_list, survey_df, pop_df, reg_form, pop_w=NULL) {
+check_covariate_balance <- function(mrplew_list, survey_df, pop_df, reg_form, pop_frac=NULL) {
   x_balance <- get_consistent_regressors(form=reg_form, df1=pop_df, df2=survey_df)
   x_pop <- x_balance$x1
   x_survey <- x_balance$x2
   stopifnot(sum(is.na(x_pop)) == 0)
   stopifnot(sum(is.na(x_survey)) == 0)
-  pop_w <- get_population_weights(pop_df, pop_w)
+  pop_frac <- get_population_frac(pop_df, pop_frac)
+  nsur <- length(mrplew_list$mrplew_w)
   balance_df <- 
     get_balance_df(x1=x_pop, x2=x_survey, 
-                   w1=pop_w, w2=mrplew_list$mrplew_w) %>%
+                   w1=pop_frac, w2=mrplew_list$mrplew_w / nsur) %>%
     rename(pop=x1bar, survey=x2bar)
   return(list(balance_df=balance_df, x_pop=x_pop, x_survey=x_survey))
 }
 
 
+#' @param w Estimated weights (summing to the number of effective observations)
+#' @param resid Estimated residuals
+#'
+#' @return The estimated frequentist standard deviation of the corresponding MrP estimate
+#' 
 #' @export
 compute_frequentist_sd <- function(w, resid) {
   stopifnot(length(w) == length(resid))
   n_obs <- length(w)
-  infl <- n_obs * resid * w
-  return(sqrt(mean(infl^2)))
+  infl <- resid * w # This is an asymptotic approximation to the influence score
+  # sd(infl) is an estimate of the stdev of sqrt{N} mrp
+  return(sd(infl) / sqrt(n_obs))
 }

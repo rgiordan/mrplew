@@ -27,9 +27,9 @@ check_column_names <- function(x_ols, x_pop) {
 #' whose n-th entry is d MrP / d y_n.
 #'
 #'@export
-get_mrplew_lm <- function(lm_fit, survey_df, pop_df, pop_w=NULL, save_terms=FALSE) {
+get_mrplew_lm <- function(lm_fit, survey_df, pop_df, pop_frac=NULL, save_terms=FALSE) {
     stopifnot(class(lm_fit) == "lm")
-    pop_w <- get_population_weights(pop_df, pop_w)
+    pop_frac <- get_population_frac(pop_df, pop_frac)
 
     # Strip the response from the formula since it might be missing
     # in the population dataframe.
@@ -50,8 +50,9 @@ get_mrplew_lm <- function(lm_fit, survey_df, pop_df, pop_w=NULL, save_terms=FALS
     betahat <- coefficients(lm_fit)
     yhat_pop <- x_pop %*% betahat
     xtx <- t(x_ols) %*% x_ols
-    mrp_ols <- t(pop_w) %*% yhat_pop %>% as.numeric()
-    w_ols <- t(pop_w) %*% x_pop %*% solve(xtx, t(x_ols)) %>% as.numeric()
+    nsur <- nrow(survey_df)
+    mrp_ols <- t(pop_frac) %*% yhat_pop %>% as.numeric()
+    w_ols <- nsur * t(pop_frac) %*% x_pop %*% solve(xtx, t(x_ols)) %>% as.numeric()
 
     result_list <- list(mrp=mrp_ols, mrplew_w=w_ols)
     if (save_terms) {
@@ -76,10 +77,10 @@ get_mrplew_lm <- function(lm_fit, survey_df, pop_df, pop_w=NULL, save_terms=FALS
 #' whose n-th entry is d MrP / d y_n.
 #'
 #'@export
-get_mrplew_logistic_glm <- function(logit_fit, survey_df, pop_df, pop_w=NULL) {
+get_mrplew_logistic_glm <- function(logit_fit, survey_df, pop_df, pop_frac=NULL) {
     stopifnot(class(logit_fit) == c("glm", "lm"))
     check_logit_family(logit_fit)
-    pop_w <- get_population_weights(pop_df, pop_w)
+    pop_frac <- get_population_frac(pop_df, pop_frac)
 
     # Strip the response from the formula since it might be missing
     # in the population dataframe.
@@ -101,10 +102,10 @@ get_mrplew_logistic_glm <- function(logit_fit, survey_df, pop_df, pop_w=NULL) {
     # dbetahat_dy <- solve(hess, t(x_ols)) =>
     # d Mrp / d y = w^T (v_pop . x_pop) hess^{-1} x_survey
     hess <- t(x_ols * vhat) %*% x_ols
-    mrp_chain_rule_term <- colSums(pop_w * vhat_pop * x_pop)
+    mrp_chain_rule_term <- colSums(pop_frac * vhat_pop * x_pop)
     w_logit <- t(mrp_chain_rule_term) %*% solve(hess, t(x_ols)) %>% as.numeric()
 
-    mrp_logit <- sum(pop_w * phat_pop)
+    mrp_logit <- sum(pop_frac * phat_pop)
 
     return(list(mrp=mrp_logit, mrplew_w=w_logit))
 }

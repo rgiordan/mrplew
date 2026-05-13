@@ -9,7 +9,7 @@ get_mrplew_logistic_brms(
   survey_df,
   mrp_draws = NULL,
   pop_df = NULL,
-  pop_w = NULL,
+  pop_frac = NULL,
   save_draws = FALSE
 )
 }
@@ -22,7 +22,7 @@ get_mrplew_logistic_brms(
 
 \item{pop_df}{Optional.  The population dataframe}
 
-\item{pop_w}{Optional.  The weight given to each row of pop_df.  Defaults to ones.}
+\item{pop_frac}{Optional.  The weight given to each row of pop_df.  Defaults to ones.}
 
 \item{save_draws}{Optional.  If true, save the posterior predictions for re-use.}
 }

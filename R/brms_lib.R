@@ -4,17 +4,17 @@
 #'
 #' @param brms_post The output of `brm(..., survey_df, family=binomial(link="logit"))`
 #' @param pop_df The population dataframe
-#' @param pop_w  The weight given to each row of pop_df.  Defaults to ones.
+#' @param pop_frac  The weight given to each row of pop_df.  Defaults to ones.
 #' @param ...  Additional arguments passed to posterior_epred
 #'
 #' @return Draws from the MrP estimate
 #'
 #' @importFrom brms posterior_epred
 #'@export
-get_mrp_draws_brms <- function(brms_post, pop_df=NULL, pop_w=NULL, ...) {
+get_mrp_draws_brms <- function(brms_post, pop_df=NULL, pop_frac=NULL, ...) {
     stopifnot(class(brms_post) == "brmsfit")
     yhat_pop_draws <- posterior_epred(brms_post, newdata=pop_df, ...)
-    mrp_draws <- get_mrp_draws(yhat_pop_draws=yhat_pop_draws, pop_w=pop_w)
+    mrp_draws <- get_mrp_draws(yhat_pop_draws=yhat_pop_draws, pop_frac=pop_frac)
     return(mrp_draws)
 }
 
@@ -24,7 +24,7 @@ get_mrp_draws_brms <- function(brms_post, pop_df=NULL, pop_w=NULL, ...) {
 #' @param survey_df The survey dataframe
 #' @param mrp_draws Optional. Draws of the mrp estimate from the same posterior, brms_post.
 #' @param pop_df Optional.  The population dataframe
-#' @param pop_w Optional.  The weight given to each row of pop_df.  Defaults to ones.
+#' @param pop_frac Optional.  The weight given to each row of pop_df.  Defaults to ones.
 #' @param save_draws Optional.  If true, save the posterior predictions for re-use.
 #'
 #' @return Draws from the MrP estimate, and the weight vector
@@ -35,7 +35,7 @@ get_mrp_draws_brms <- function(brms_post, pop_df=NULL, pop_w=NULL, ...) {
 #'@export
 get_mrplew_logistic_brms <- function(brms_post, survey_df, 
                                      mrp_draws=NULL, 
-                                     pop_df=NULL, pop_w=NULL, 
+                                     pop_df=NULL, pop_frac=NULL, 
                                      save_draws=FALSE) {
     stopifnot(class(brms_post) == "brmsfit")
     check_logit_family(brms_post)
@@ -46,7 +46,7 @@ get_mrplew_logistic_brms <- function(brms_post, survey_df,
     if (is.null(mrp_draws)) {
         mrp_draws <- get_mrp_draws_brms(brms_post=brms_post, 
                                         pop_df=pop_df,
-                                        pop_w=pop_w)
+                                        pop_frac=pop_frac)
     }
 
     # Draws are in rows and observations in columns.
@@ -104,7 +104,7 @@ get_gaussian_dloglikdy_draws <- function(resid_draws, sigma_draws) {
 #' @param brms_post The output of `brm(..., survey_df, family=gaussian())`
 #' @param survey_df The survey dataframe
 #' @param pop_df The population dataframe
-#' @param pop_w Optional.  The weight given to each row of pop_df.  Defaults to ones.
+#' @param pop_frac Optional.  The weight given to each row of pop_df.  Defaults to ones.
 #'
 #' @return Draws from the MrP estimate, and the weight vector
 #' whose n-th entry is d E[MrP | X, Y] / d y_n.
@@ -112,7 +112,7 @@ get_gaussian_dloglikdy_draws <- function(resid_draws, sigma_draws) {
 #' @importFrom brms posterior_epred
 #' @importFrom brms posterior_linpred
 #'@export
-get_ols_mcmc_weights <- function(brms_post, survey_df, pop_df, pop_w=NULL, 
+get_ols_mcmc_weights <- function(brms_post, survey_df, pop_df, pop_frac=NULL, 
                               re_formula=NULL, allow_new_levels=FALSE) {
     stopifnot(class(brms_post) == "brmsfit")
     check_ols_family(brms_post)
@@ -125,7 +125,7 @@ get_ols_mcmc_weights <- function(brms_post, survey_df, pop_df, pop_w=NULL,
     result_list <- get_mrplew_mcmc(
         yhat_pop_draws=yhat_pop_draws,
         dloglikdy_survey_draws=dloglikdy_survey_draws,
-        pop_w=pop_w)
+        pop_frac=pop_frac)
 
     if (save_draws) {
         yhat_survey_draws <- expit(dloglikdy_survey_draws)

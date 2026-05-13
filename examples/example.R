@@ -10,6 +10,8 @@ library(gridExtra)
 
 set.seed(25338)
 
+show_plots <- TRUE
+
 # induce group probabilities with a truncated normal
 n_groups <- 4
 degree <- 2
@@ -34,7 +36,7 @@ mrp_df <- data.frame(truth=mrp_true)
 with(survey_df, mean(ey))
 
 # Accumulate data within group.  This helps speed up MCMC prediction.
-agg_list <- aggregate_simuilation_data(sim_data)
+agg_list <- mrplew::aggregate_simulation_data(sim_data)
 survey_agg_df <- agg_list$survey_agg_df
 pop_agg_df <- agg_list$pop_agg_df
 
@@ -48,7 +50,7 @@ w_opt <-
   pull(w_opt)
 
 weights_df <- data.frame(w_opt=w_opt)
-if (FALSE) {
+if (show_plots) {
   # Look at the dispersion of the optimal weights
   hist(w_opt, 100)
 }
@@ -60,11 +62,13 @@ g_sum <- paste(sim_data$group_effects$g_cols, collapse=" + ")
 reg_form <-sprintf( "y ~ 1 + (%s)^%d", g_sum, degree)
 
 lm_fit <- lm(formula(reg_form), survey_df)
-ols_mrplew <- get_mrplew_lm(lm_fit, survey_df, pop_df)
+ols_mrplew <- mrplew::get_mrplew_lm(lm_fit, survey_df, pop_df)
 mrp_df$ols <- ols_mrplew$mrp
 
 weights_df$w_ols <- ols_mrplew$mrplew_w
-if (FALSE) {
+
+if (show_plots) {
+  # Compare the OLS weights to the optimal weights
   ggplot(aes(x=w_opt, y=w_ols), data=weights_df) +
     geom_point() + geom_abline()
 }
@@ -84,16 +88,23 @@ logit_post <- brm(formula(reg_form), survey_df, family=bernoulli(link="logit"),
 stan_time <- Sys.time() - stan_time
 print(stan_time)
 
-# get_logit_mcmc_weights also computes draws of MrP so there is no
-# ambiguity about how we are estimating it.
-logit_mcmc_mrplew <- get_mrplew_logistic_brms(
-  logit_post, survey_df, pop_agg_df, pop_w=pop_agg_df$w)
-mrp_df$mcmc <- mean(logit_mcmc_mrplew$mrp_draws)
+# You can compute MrP draws however you like, or use
+# the built-in function
+mrp_draws <- mrplew::get_mrp_draws_brms(brms_post=logit_post,
+                                        pop_df=pop_agg_df,
+                                        pop_frac=pop_agg_df$frac)
+
+logit_mcmc_mrplew <- mrplew::get_mrplew_logistic_brms(
+  brms_post=logit_post, 
+  survey_df=survey_df, 
+  mrp_draws=mrp_draws)
+
+mrp_df$mcmc <- mean(mrp_draws)
 weights_df$w_mcmc <- logit_mcmc_mrplew$mrplew_w
 
 print(mrp_df)
 
-if (FALSE) {
+if (show_plots) {
   # Compare the logistic regression weights to the MrPlew MCMC weights
   ggplot(aes(x=w_opt), data=weights_df) +
     geom_point(aes(y=w_ols, color="ols")) + 
@@ -106,33 +117,36 @@ if (FALSE) {
 ##########################################
 # Check balance
 
+# Check up to degree + 2 order interactions
 balance_reg_form <-
   formula(sprintf( "y ~ 1 + (%s)^%d", g_sum, degree + 2))
 
-ols_balance_list <- check_covariate_balance(
+
+ols_balance_list <- mrplew::check_covariate_balance(
   mrplew_list=ols_mrplew, 
   survey_df=survey_df, 
-  pop_df=pop_agg_df, 
+  pop_df=pop_agg_df,
   reg_form=balance_reg_form, 
-  pop_w=pop_agg_df$w)
+  pop_frac=pop_agg_df$frac)
+
 ols_balance_df <-
   ols_balance_list$balance_df %>%
   mutate(pct=100 * difference / mrp_true)
 
-mcmc_balance_df <- check_covariate_balance(
+mcmc_balance_df <- mrplew::check_covariate_balance(
   mrplew_list=logit_mcmc_mrplew, 
   survey_df=survey_df, 
   pop_df=pop_agg_df, 
   reg_form=balance_reg_form, 
-  pop_w=pop_agg_df$w)$balance_df %>%
+  pop_frac=pop_agg_df$frac)$balance_df %>%
   mutate(pct=100 * difference / mrp_true)
 
 
 opt_balance_df <- get_balance_df(
   x1=ols_balance_list$x_pop,
   x2=ols_balance_list$x_survey, 
-  w1=pop_agg_df$w, 
-  w2=w_opt) %>%
+  w1=pop_agg_df$frac, 
+  w2=w_opt / sum(w_opt)) %>%
   rename(pop=x1bar, survey=x2bar) %>%
   mutate(pct=100 * difference / mrp_true)
 
@@ -141,26 +155,32 @@ balance_df <- rbind(
   ols_balance_df %>% mutate(name="ols"),
   mcmc_balance_df %>% mutate(name="logistic mcmc"),
   opt_balance_df %>% mutate(name="optimal"))
-jitter_amount <- max(abs(balance_df$pct)) * 5e-4
-ggplot(balance_df) +
-  geom_bar(
-    aes(fill=name, y=pct + jitter_amount, x=reg),
-    position="dodge", stat="identity") +
-  coord_flip() +
-  xlab(NULL) +
-  labs(fill="Method") +
-  ylab("Imbalance (% of MrP truth)")
 
-
-compute_mrplew_variance_estimate <- function(w, y, yhat) {
-  stopifnot(length(y) == length(w))
-  stopifnot(length(yhat) == length(w))
-  resid <- y - yhat
-  weps <- resid * w
-  weps_bar <- mean(weps)
-  return(mean(weps^2) - weps_bar^2)
+if (show_plots) {
+  ggplot(balance_df) +
+    geom_bar(
+      aes(fill=name, y=pct, x=reg),
+      position="dodge", stat="identity") +
+    coord_flip() +
+    xlab(NULL) +
+    labs(fill="Method") +
+    ylab("Imbalance (% of MrP truth)")
 }
 
-compute_mrplew_variance_estimate(ols_mrplew$mrplew_w, y=survey_df$y, yhat)
+
+
+##########################################
+# Variance estimate
+
+yhat_draws <- brms::posterior_epred(logit_post, newdata=survey_df)
+yhat <- colMeans(yhat_draws)
+resid <- survey_df$y - yhat
+
+# Frequentist standard deviation:
+freq_sd <- mrplew::compute_frequentist_sd(w=ols_mrplew$mrplew_w, resid=resid)
+print(freq_sd)
+
+# Posterior standard deviation:
+sd(mrp_draws)
 
 

@@ -4,7 +4,7 @@
 \alias{get_mrplew_logistic_glm}
 \title{Get mrplew weights for the logistic estimator.}
 \usage{
-get_mrplew_logistic_glm(logit_fit, survey_df, pop_df, pop_w = NULL)
+get_mrplew_logistic_glm(logit_fit, survey_df, pop_df, pop_frac = NULL)
 }
 \arguments{
 \item{logit_fit}{The output of \code{glm(..., survey_df, family=binomial(link="logit"))}}

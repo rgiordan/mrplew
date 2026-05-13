@@ -36,14 +36,14 @@ test_that("mcmc_runs", {
     agg_list <- rds_load$agg_list
 
     y_col <- f_lhs(as.formula(formula(post)))
-    agg_list <- aggregate_simuilation_data(sim_data, y_col)
+    agg_list <- aggregate_simulation_data(sim_data, y_col)
 
     # Test that this runs and produces weights of the correct length.
     mcmc_mrp <- mrplewFunction(
       post, 
       sim_data$survey_df, 
       agg_list$pop_agg_df, 
-      pop_w=agg_list$pop_agg_df$w)
+      pop_frac=agg_list$pop_agg_df$w)
 
     expect_true(length(mcmc_mrp$w) == nrow(sim_data$survey_df))
 

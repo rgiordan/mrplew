@@ -4,12 +4,12 @@
 \alias{get_mrp_draws}
 \title{Get mrp draws MCMC estimators.}
 \usage{
-get_mrp_draws(yhat_pop_draws, pop_w = NULL)
+get_mrp_draws(yhat_pop_draws, pop_frac = NULL)
 }
 \arguments{
 \item{yhat_pop_draws}{MCMC draws x Population size matrix of yhat posterior draws}
 
-\item{pop_w}{Optional.  The weight given to each row of pop_df.  Defaults to ones.}
+\item{pop_frac}{Optional.  The weight given to each row of pop_df.  Defaults to ones.}
 }
 \value{
 Draws from the MrP estimate.

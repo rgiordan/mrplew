@@ -174,7 +174,7 @@ simulate_survey_data <- function(n_groups, n_obs, n_obs_pop, degree) {
 #'
 #' @return A list containing aggregated and joined simulation data
 #'@export
-aggregate_simuilation_data <- function(sim_data) {
+aggregate_simulation_data <- function(sim_data) {
 
   ##########################################################
   # Aggregate across groups to check 
@@ -186,13 +186,13 @@ aggregate_simuilation_data <- function(sim_data) {
     sim_data$survey_df %>%
     group_by(pick(all_of(c(g_cols, "s")))) %>%
     summarize(count=n(), ybar=mean(y), ey=mean(ey), .groups="drop") %>%
-    mutate(w=count / sum(count))
+    mutate(frac=count / sum(count))
 
   pop_agg_df <-
     sim_data$pop_df %>%
     group_by(pick(all_of(c(g_cols, "s")))) %>%
     summarize(count=n(), ybar=mean(y), ey=mean(ey), .groups="drop") %>%
-    mutate(w=count / sum(count))
+    mutate(frac=count / sum(count))
 
   # Compare the averages and weights directly from the population
   # to the sample.
@@ -201,7 +201,7 @@ aggregate_simuilation_data <- function(sim_data) {
     survey_agg_df,
     by=c(g_cols, "s"),
     suffix=c("_pop", "_sur")) %>%
-    mutate(w_opt=w_pop / count_sur)
+    mutate(w_opt=frac_pop / frac_sur)
 
   return(list(joint_df=joint_df, survey_agg_df=survey_agg_df, pop_agg_df=pop_agg_df))
 }

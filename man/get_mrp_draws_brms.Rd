@@ -4,14 +4,14 @@
 \alias{get_mrp_draws_brms}
 \title{Get mrplew weights for the brms logistic MCMC estimator.}
 \usage{
-get_mrp_draws_brms(brms_post, pop_df = NULL, pop_w = NULL, ...)
+get_mrp_draws_brms(brms_post, pop_df = NULL, pop_frac = NULL, ...)
 }
 \arguments{
 \item{brms_post}{The output of \code{brm(..., survey_df, family=binomial(link="logit"))}}
 
 \item{pop_df}{The population dataframe}
 
-\item{pop_w}{The weight given to each row of pop_df.  Defaults to ones.}
+\item{pop_frac}{The weight given to each row of pop_df.  Defaults to ones.}
 
 \item{...}{Additional arguments passed to posterior_epred}
 }

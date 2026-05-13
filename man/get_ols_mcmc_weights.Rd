@@ -8,7 +8,7 @@ get_ols_mcmc_weights(
   brms_post,
   survey_df,
   pop_df,
-  pop_w = NULL,
+  pop_frac = NULL,
   re_formula = NULL,
   allow_new_levels = FALSE
 )
@@ -20,7 +20,7 @@ get_ols_mcmc_weights(
 
 \item{pop_df}{The population dataframe}
 
-\item{pop_w}{Optional.  The weight given to each row of pop_df.  Defaults to ones.}
+\item{pop_frac}{Optional.  The weight given to each row of pop_df.  Defaults to ones.}
 }
 \value{
 Draws from the MrP estimate, and the weight vector

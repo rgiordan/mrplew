@@ -14,7 +14,7 @@ GetTestData <- function() {
 }
 
 
-aggregate_simuilation_data <- function(sim_data, resp="y") {
+aggregate_simulation_data <- function(sim_data, resp="y") {
 
   ##########################################################
   # Aggregate across groups to check 

@@ -10,18 +10,19 @@ library(brms)
 #' Get mrp draws MCMC estimators.
 #'
 #' @param yhat_pop_draws MCMC draws x Population size matrix of yhat posterior draws
-#' @param pop_w Optional.  The weight given to each row of pop_df.  Defaults to ones.
+#' @param pop_frac Optional.  The weight given to each row of pop_df.  Defaults to ones.
 #'
 #' @return Draws from the MrP estimate.
 #'
 #'@export
-get_mrp_draws <- function(yhat_pop_draws, pop_w=NULL) {
-    if (is.null(pop_w)) {
-        pop_w <- rep(1, ncol(yhat_pop_draws))
+get_mrp_draws <- function(yhat_pop_draws, pop_frac=NULL) {
+    if (is.null(pop_frac)) {
+        npop <- ncol(yhat_pop_draws)
+        pop_frac <- rep(1 / npop, npop)
     } else {
-        stopifnot(length(pop_w) == ncol(yhat_pop_draws))
+        stopifnot(length(pop_frac) == ncol(yhat_pop_draws))
     }
-    mrp_draws <- yhat_pop_draws %*% pop_w
+    mrp_draws <- yhat_pop_draws %*% pop_frac
     return(mrp_draws)
 }
 

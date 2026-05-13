@@ -46,7 +46,7 @@ test_that("simulations_correct", {
   ##########################################################
   # Aggregate across groups to check 
 
-  # Note that the check column is not in the aggregate_simuilation_data function
+  # Note that the check column is not in the aggregate_simulation_data function
   survey_agg_df <-
     survey_df %>%
     group_by(pick(all_of(c(g_cols, "s")))) %>%

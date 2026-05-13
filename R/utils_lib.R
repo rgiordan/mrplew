@@ -13,18 +13,18 @@ expit <- function(x) {
 }
 
 
-# Use pop_w for weights if specfied, otherwise use 
+# Use pop_frac for weights if specfied, otherwise use 
 # a vector of ones as long as pop_df.
-get_population_weights <- function(pop_df, pop_w=NULL) {
-  if (is.null(pop_w)) {
-    pop_w <- rep(1, nrow(pop_df)) / nrow(pop_df)
+get_population_frac <- function(pop_df, pop_frac=NULL) {
+  if (is.null(pop_frac)) {
+    pop_frac <- rep(1, nrow(pop_df)) / nrow(pop_df)
   }
   
-  weight_sum <- sum(pop_w)
+  weight_sum <- sum(pop_frac)
   if (abs(weight_sum - 1) > 1e-6) {
     warning(sprintf("The population weights do not sum to one: %f", weight_sum))
   }
-  return(pop_w)
+  return(pop_frac)
 }
 
 

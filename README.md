@@ -169,3 +169,13 @@ glm_result$mrplew_w
 
 A fully worked example, including balance plots and weight diagnostics, is in
 `examples/example.R`.
+
+
+# AI Assistance acknowledgement
+
+The AI assistant Claude Code v2.1.114 was used to help clean and document this package as well as to
+identify bugs and inconsistencies.  The key tasks that AI helped with were:
+
+- Identifying bugs or typos, particularly due to functions whose scope and definition had changed over time;
+- Writing and updating unit tests; and
+- Assisting with generating and checking documentation.

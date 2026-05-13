@@ -121,7 +121,7 @@ get_ols_mcmc_weights <- function(brms_post, survey_df, pop_df, pop_frac=NULL,
     ols_ll_draws <- get_ols_likelihood_component_draws(brms_post, survey_df)
     dloglikdy_survey_draws <- get_gaussian_dloglikdy_draws(
         resid_draws=ols_ll_draws$resid_draws, sigma_draws=ols_ll_draws$sigma_draws)
-    mrp_draws <- yhat_pop_draws %*% pop_frac
+    mrp_draws <- get_mrp_draws(yhat_pop_draws, pop_frac)
 
     result_list <- get_mrplew_mcmc(
         mrp_draws=mrp_draws,

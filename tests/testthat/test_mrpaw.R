@@ -90,3 +90,20 @@ test_that("covariate_balance", {
 test_that("influence_weighting", {
   # TODO!
 })
+
+
+test_that("compute_frequentist_sd", {
+
+  # Zero residuals always give sd = 0 regardless of weights.
+  expect_equal(compute_frequentist_sd(w=c(1, 2, 3), resid=c(0, 0, 0)), 0)
+
+  # Analytical: infl = w * resid = c(1, -1), sd(infl) = sqrt(2), n_obs = 2
+  # result = sqrt(2) / sqrt(2) = 1
+  expect_equal(compute_frequentist_sd(w=c(1, 1), resid=c(1, -1)), 1)
+
+  # Scaling weights by k scales the result by k.
+  expect_equal(compute_frequentist_sd(w=c(2, 2), resid=c(1, -1)), 2)
+
+  # Mismatched lengths should throw an error.
+  expect_error(compute_frequentist_sd(w=c(1, 2), resid=c(1, 2, 3)))
+})

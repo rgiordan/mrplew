@@ -18,37 +18,42 @@ test_that("ols_works", {
   # Run correctly specified logistic and OLS regression
 
   sim_data <- GetTestData()
-  agg_list <- aggregate_simulation_data(sim_data)
+  agg_list <- GetAggData(sim_data)
   group_effects <- sim_data$group_effects
 
   g_cols <- sim_data$group_effects$g_cols
   g_sum <- paste(group_effects$g_cols, collapse=" + ")
   reg_form <-sprintf( "y ~ 1 + (%s)^%d", g_sum, degree=2)
 
+  # For a correctly specified saturated model, the implicit weights should
+  # equal the optimal post-stratification weights.
+  # OLS weights sum to nsur; logit weights are the raw derivatives (sum to 1).
+  w_opt <-
+    sim_data$survey_df %>%
+    inner_join(select(agg_list$joint_df, s, w_opt), by="s") %>%
+    pull(w_opt)
+  nsur <- nrow(sim_data$survey_df)
+
   for (method in c("ols", "logit")) {
     if (method == "ols") {
       fit <- lm(formula(reg_form), sim_data$survey_df)
-      mrp_weights <- get_ols_weights(fit, sim_data$survey_df, sim_data$pop_df)
+      mrp_weights <- get_mrplew_lm(fit, sim_data$survey_df, sim_data$pop_df)
+      AssertNearlyEqual(mrp_weights$mrplew_w, w_opt)
     } else if (method == "logit") {
       fit <- glm(formula(reg_form), sim_data$survey_df, family=binomial(link="logit"))
-      mrp_weights <- get_logit_weights(fit, sim_data$survey_df, sim_data$pop_df)
+      mrp_weights <- get_mrplew_logistic_glm(fit, sim_data$survey_df, sim_data$pop_df)
+      # Logit mrplew_w is the raw derivative d MrP / d y_i (no nsur multiplier),
+      # so it is w_opt / nsur for a correctly specified saturated model.
+      AssertNearlyEqual(mrp_weights$mrplew_w, w_opt / nsur, tol=1e-6)
     } else {
       expect_true(FALSE, "This should never happen")
     }
   }
 
   # Because the model is correctly specified, the fit should be exact
+  # (uses `fit` from the logit iteration, which is the last one)
   yhat <- predict(fit, agg_list$survey_agg_df, type="response")
   AssertNearlyEqual(yhat, agg_list$survey_agg_df$ybar, tol=1e-9)
-  
-  # Because the model is correctly and dense, the weights should be
-  # the optimal weights
-  w_opt <-
-    sim_data$survey_df %>%
-    inner_join(select(agg_list$joint_df, s, w_opt), by="s") %>%
-    pull(w_opt)
-
-  AssertNearlyEqual(mrp_weights$w, w_opt)
 })
 
 

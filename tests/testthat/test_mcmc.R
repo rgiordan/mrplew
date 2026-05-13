@@ -21,10 +21,8 @@ test_that("mcmc_runs", {
   for (method in c("ols", "logit", "ols_response_name", "logit_response_name")) {
     print(sprintf("Testing MCMC for method %s", method))
     if (method %in% c("ols", "ols_response_name")) {
-      mrplewFunction <- get_ols_mcmc_weights
       model_type <- "ols"
     } else if (method %in% c("logit", "logit_response_name")) {
-      mrplewFunction <- get_logit_mcmc_weights
       model_type <- "logit"
     } else {
       expect_true(FALSE, sprintf("mcmc_runs: Unknown method %s", method))
@@ -33,19 +31,29 @@ test_that("mcmc_runs", {
     rds_load <- SafeLoadPosterior(method)
     post <- rds_load$post
     sim_data <- rds_load$sim_data
-    agg_list <- rds_load$agg_list
 
-    y_col <- f_lhs(as.formula(formula(post)))
-    agg_list <- aggregate_simulation_data(sim_data, y_col)
+    y_col <- as.character(f_lhs(as.formula(formula(post))))
+    agg_list <- GetAggData(sim_data, y_col)
 
     # Test that this runs and produces weights of the correct length.
-    mcmc_mrp <- mrplewFunction(
-      post, 
-      sim_data$survey_df, 
-      agg_list$pop_agg_df, 
-      pop_frac=agg_list$pop_agg_df$w)
+    if (model_type == "ols") {
+      mcmc_mrp <- get_ols_mcmc_weights(
+        post,
+        sim_data$survey_df,
+        agg_list$pop_agg_df,
+        pop_frac=agg_list$pop_agg_df$frac)
+    } else if (model_type == "logit") {
+      mrp_draws <- get_mrp_draws_brms(
+        brms_post=post,
+        pop_df=agg_list$pop_agg_df,
+        pop_frac=agg_list$pop_agg_df$frac)
+      mcmc_mrp <- get_mrplew_logistic_brms(
+        brms_post=post,
+        survey_df=sim_data$survey_df,
+        mrp_draws=mrp_draws)
+    }
 
-    expect_true(length(mcmc_mrp$w) == nrow(sim_data$survey_df))
+    expect_true(length(mcmc_mrp$mrplew_w) == nrow(sim_data$survey_df))
 
     print("Testing likelihood")
     # Test the likelihood computation
@@ -68,7 +76,7 @@ test_that("mcmc_runs", {
 
     } else if (model_type == "logit") {
       # posterior_epred should be yhat.
-      # posterior_linpred should be theta^T x_n.  
+      # posterior_linpred should be theta^T x_n.
       # Draws are in rows and observations in columns.
       AssertNearlyEqual(expit(linpred_pop), yhat_pop)
 

@@ -1,265 +1,97 @@
 # mrplew Library Errata
 
-Reviewed 2026-05-12. All issues are read-only findings; no code was changed.
+Reviewed 2026-05-12 (initial); updated 2026-05-12 after user fixes.
+No code was changed during this review.
+
+Items marked **FIXED** were corrected by the user.
+Items marked **NOTE: errata was wrong** were incorrect in the original review.
 
 ---
 
-## Critical Bugs
+## Remaining Issues
 
-### 1. `binary_lib.R:46` — `n_obs` undefined in `draw_conditional_binary_data`
+### 1. `brms_lib.R:124` — `get_ols_mcmc_weights` crashes when `pop_frac=NULL`
 
-When `unif_base` is `NULL`, the code calls `runif(n_obs)` but `n_obs` is not a
-parameter or local variable of the function. Should be `runif(length(y_orig))`.
-
----
-
-### 2. `brms_lib.R:125–128` — `get_ols_mcmc_weights` calls `get_mrplew_mcmc` with wrong argument names
+The new code (after removing the `get_mrp_draws` call) is:
 
 ```r
-result_list <- get_mrplew_mcmc(
-    yhat_pop_draws=yhat_pop_draws,        # ← wrong name
-    dloglikdy_survey_draws=dloglikdy_survey_draws,
-    pop_frac=pop_frac)                    # ← not a parameter of get_mrplew_mcmc
+mrp_draws <- yhat_pop_draws %*% pop_frac
 ```
 
-`get_mrplew_mcmc` (in `mrplew_mcmc_lib.R`) takes `mrp_draws` and
-`dloglikdy_survey_draws` only; it does not accept `yhat_pop_draws` or
-`pop_frac`. The correct call should first convert `yhat_pop_draws` to `mrp_draws`
-via `get_mrp_draws(yhat_pop_draws, pop_frac)`, then pass the result as
-`mrp_draws`. Compare with the correct pattern in `get_mrplew_logistic_brms`.
+The parameter `pop_frac` defaults to `NULL`, so this line throws an error when
+`pop_frac` is not supplied.  The analogous `get_mrplew_logistic_brms` reaches
+the NULL case via `get_mrp_draws_brms → get_mrp_draws`, which substitutes
+`rep(1/npop, npop)` when `pop_frac=NULL`.  The OLS path needs the same
+treatment, e.g. replace the raw matrix multiply with a call to
+`get_mrp_draws(yhat_pop_draws, pop_frac)`.
 
 ---
 
-### 3. `brms_lib.R:130` — `save_draws` is not a parameter of `get_ols_mcmc_weights`
-
-The function body references `if (save_draws)` but the function signature is
+### 2. `brms_lib.R:3,21` — Both docstring titles on the first two exported functions are identical
 
 ```r
-get_ols_mcmc_weights <- function(brms_post, survey_df, pop_df, pop_frac=NULL,
-                                 re_formula=NULL, allow_new_levels=FALSE)
+#' Get mrplew weights for the brms logistic MCMC estimator.   ← get_mrp_draws_brms (line 3)
+...
+#' Get mrplew weights for the brms logistic MCMC estimator.   ← get_mrplew_logistic_brms (line 21)
 ```
 
-`save_draws` is absent. This would throw "object 'save_draws' not found"
-whenever the `if` branch is reached. The analogous `get_mrplew_logistic_brms`
-correctly declares `save_draws=FALSE`.
+The title on `get_mrp_draws_brms` should describe that function (e.g., "Get MrP
+posterior draws from a brms model"), not the weight-computation step.
 
 ---
 
-### 4. `brms_lib.R:131` — `expit(dloglikdy_survey_draws)` is wrong for OLS
+### 3. `balance_lib.R:55–58` — `sprintf` return silently discarded; no error is raised on collision
 
-Inside the `if (save_draws)` block of `get_ols_mcmc_weights`:
+The variable name was fixed (`id_cols` → `id_col`), but the `if` block still
+takes no action:
 
 ```r
-yhat_survey_draws <- expit(dloglikdy_survey_draws)
+if (id_col %in% c(names(df1), names(df2))) {
+    sprintf("ID column %d is already present, which should never happen.", id_col)
+}
 ```
 
-For OLS, `dloglikdy_survey_draws` is `-resid / sigma^2` (i.e., a scaled
-residual), not a log-odds. Applying `expit` to it produces meaningless values.
-This is a copy-paste error from the logistic version, where `dloglikdy` really
-is the log-odds `eta` and `expit(eta) = yhat` is meaningful.
+The `sprintf` result is not passed to `stop()`, `warning()`, or `message()`.
+A column-name collision would be silently ignored and the downstream row-split
+would produce incorrect results.  Also note `%d` (integer format) is used for
+the string `id_col`; should be `%s`.
 
 ---
 
-### 5. `balance_lib.R:80` — `check_balance_matrices` always passes the column-name check
+### 4. `utils_lib.R:17` — Inline comment still says "ones" when default is `1/N`
 
-```r
-if (any(colnames(x2) != colnames(x2))) {   # compares x2 to itself
-```
-
-Both sides are `x2`; the condition is identically `FALSE`. The check never
-fires regardless of whether `x1` and `x2` have matching column names. Should be
-`colnames(x1) != colnames(x2)`.
-
----
-
-### 6. `mrplew_mcmc_lib.R:97` — Wrong sign in Gaussian log-likelihood derivative
-
-```r
-dloglikdy_survey_draws <- -1 * resid_draws / (sigma_draws^2)
-```
-
-The Gaussian log-likelihood is `-(y - yhat)^2 / (2 sigma^2)`. Its derivative
-with respect to `y_n` is `+(y_n - yhat_n) / sigma^2 = resid_n / sigma^2`. The
-code negates this. The immediately preceding comment (line 96) correctly states
-the expected sign:
-
-```
-# The log likelihood derivative for the n^th datapoint is
-# sigma^{-2} (y_n - \hat{y}_n)
-```
-
-but the code contradicts it. The logistic version (`posterior_linpred`, line 54)
-uses the correct positive sign. This sign error propagates into every OLS weight
-computation via the MCMC path.
-
----
-
-## Test File Bugs
-
-### 7. `test_opt.R:31,34` — Nonexistent function names
-
-The test calls `get_ols_weights` and `get_logit_weights`, neither of which
-exists. The correct names are `get_mrplew_lm` and `get_mrplew_logistic_glm`.
-
----
-
-### 8. `test_mcmc.R:28` — Nonexistent function `get_logit_mcmc_weights`
-
-The test references `get_logit_mcmc_weights`; the actual function is
-`get_mrplew_logistic_brms`.
-
----
-
-### 9. `test_opt.R:51` and `test_mcmc.R:48` — Wrong field name `$w`
-
-Both tests access `mrp_weights$w` / `mcmc_mrp$w`, but all weight-returning
-functions store the weights under `$mrplew_w`.
-
----
-
-### 10. `test_mcmc.R:39` — `aggregate_simulation_data` called with two arguments
-
-```r
-agg_list <- aggregate_simulation_data(sim_data, y_col)
-```
-
-The package's exported `aggregate_simulation_data` (in `simulation_lib.R`)
-accepts only `sim_data`. The two-argument version lives in `tests/testthat/helper.R`
-(local only) and would shadow the exported one inside the test. However, the
-`helper.R` version calls its second parameter `resp` and the call passes
-`y_col`. If `y_col` is a string, this happens to work, but the variable name
-mismatch is confusing and the functions are not the same.
-
----
-
-## Weight Scaling Inconsistencies
-
-### 11. `simulation_lib.R:204` vs `tests/testthat/helper.R:44` — `w_opt` differs by a factor of `nsur`
-
-**`simulation_lib.R` (exported `aggregate_simulation_data`):**
-```r
-mutate(w_opt = frac_pop / frac_sur)
-```
-When joined to individual survey rows and summed: each row in group *s* gets
-weight `frac_pop_s / frac_sur_s = frac_pop_s * nsur / count_sur_s`.
-Sum over all survey rows = `nsur * sum(frac_pop) = nsur`.
-
-**`helper.R` (local test version):**
-```r
-mutate(w_opt = w_pop / count_sur)
-```
-When joined to individual survey rows and summed: each row in group *s* gets
-weight `frac_pop_s / count_sur_s`. Sum = `sum(frac_pop) = 1`.
-
-These two formulas differ by a factor of `nsur`. The test in `test_opt.R`
-compares `mrp_weights$mrplew_w` (which uses the library's convention and sums to
-`nsur`) against `w_opt` from the helper version (which sums to 1), so the
-assertion would fail by a factor of `nsur` even if the function names were
-correct.
-
----
-
-### 12. Weight-sum convention: `mrplew_w` sums to approximately `n_obs`
-
-`get_mrplew_lm` returns `w_ols = nsur * (pop_frac^T X_pop) (X_sur^T X_sur)^{-1} X_sur^T`,
-which sums to `nsur` when the model contains an intercept.
-
-`get_mrplew_mcmc` returns `mrplew_w = n_obs * cov(mrp_draws, dloglikdy)`,
-where `n_obs = ncol(dloglikdy_survey_draws)` = number of survey observations.
-
-The `compute_frequentist_sd` docstring (line 131 of `balance_lib.R`) explicitly
-states weights should "sum to the number of effective observations," consistent
-with this convention.
-
-However, `check_covariate_balance` normalises the survey weights by `nsur`
-before passing them to `get_balance_df`, which expects weights summing to ~1.
-For the OLS case this is mathematically correct. For the MCMC case, the sum of
-`n_obs * cov(mrp, dloglik)` is `n_obs * cov(mrp, sum_n dloglik_n)`, which does
-not generally equal `n_obs`, so the renormalised weights in the balance check
-may not sum to 1 as expected.
-
----
-
-## Documentation / Docstring Errors
-
-### 13. `balance_lib.R:94` — Duplicate `@param w1`, missing `@param w2`
-
-```r
-#' @param w1 A vector of normalized weights for x1, summing to ~ 1
-#' @param w1 A vector of normalized weights for x2, summing to ~ 1   ← should be @param w2
-```
-
----
-
-### 14. `utils_lib.R:17` — Comment says "ones" but code defaults to `1/N`
+The external-facing docstrings were updated to "Defaults to 1/N", but the
+comment inside `get_population_frac` still reads:
 
 ```r
 # Use pop_frac for weights if specified, otherwise use
 # a vector of ones as long as pop_df.
 ```
-The actual default is `rep(1, nrow(pop_df)) / nrow(pop_df)` — a vector of
-`1/N`, not ones. A vector of ones would fail the `abs(weight_sum - 1) > 1e-6`
-check on the next line.
 
-The same "Defaults to ones" phrasing appears in the `@param pop_frac`
-docstrings of `get_mrp_draws_brms`, `get_mrplew_logistic_brms`, and
-`get_ols_mcmc_weights`. All should say "Defaults to `1/N`" or "uniform weights."
-
-`get_mrp_draws` (line 18–21 of `mrplew_mcmc_lib.R`) also defaults to `1/npop`,
-not ones.
+The actual default is `rep(1, nrow(pop_df)) / nrow(pop_df)`, not ones.
 
 ---
 
-### 15. `brms_lib.R:21` — Wrong docstring title on `get_mrplew_logistic_brms`
-
-The docstring reads "Get mrplew weights for the brms logistic MCMC estimator"
-— identical to `get_mrp_draws_brms` immediately above it (line 3). It was
-apparently copied without updating the title.
-
----
-
-### 16. `utils_lib.R:83–90` — `safe_get_eta_draws` looks for `eta_draws` that is never stored
-
-`safe_get_eta_draws` checks for `"eta_draws"` in `mrplew_list`, but no function
-in the library stores a field named `eta_draws`. The relevant quantity stored by
-`get_mrplew_logistic_brms` when `save_draws=TRUE` is `dloglikdy_survey_draws`.
-The function will always fall through to calling `posterior_linpred`.
-
----
-
-## Typos
-
-### 17. `balance_lib.R:57` — `id_cols` should be `id_col`
+### 5. `utils_lib.R:83–90` — `safe_get_eta_draws` looks for a field that is never stored
 
 ```r
-sprintf("ID column %d is already present, which should never happen.", id_cols)
+safe_get_eta_draws <- function(mrplew_list, post, survey_df) {
+    if ("eta_draws" %in% names(mrplew_list)) {
+        eta_draws <- mrplew_list$eta_draws
+    } else {
+        eta_draws <- posterior_linpred(post, newdata=survey_df)
+    }
+    ...
+}
 ```
-The variable is named `id_col` (singular); `id_cols` is undefined. Additionally,
-the format specifier `%d` (integer) is used for a string column name, and the
-`sprintf` result is silently discarded (no `warning()` or `stop()`), so the
-message is never emitted.
+
+No function in the library stores a field called `eta_draws` in its result list.
+`get_mrplew_logistic_brms` saves `dloglikdy_survey_draws` (which equals eta for
+logistic), not `eta_draws`. The fast-path branch will never be taken.
 
 ---
 
-### 18. `binary_lib.R:32` — "expectatoins" should be "expectations"
-
-```r
-#' @param e_y A vector of estimated expectatoins of y_orig
-```
-
----
-
-### 19. `simulation_lib.R:138,139` — Duplicate `@param n_obs`
-
-```r
-#' @param n_obs The number of survey observations
-#' @param n_obs The number of population observations
-```
-The second entry should be `@param n_obs_pop`.
-
----
-
-### 20. `simulation_lib.R:142` — "simualted" should be "simulated"
+### 6. `simulation_lib.R:141` — "simualted" typo
 
 ```r
 #' @return A list of simualted data
@@ -267,31 +99,82 @@ The second entry should be `@param n_obs_pop`.
 
 ---
 
-## Minor Scoping / Logic Issues
+### 7. `weights_opt_lib.R` — Inconsistent `mrplew_w` scaling between OLS and logistic GLM
 
-### 21. `balance_lib.R:53–58` — `get_consistent_regressors` silently swallows collision error
+`get_mrplew_lm` multiplies the raw derivative by `nsur`:
+```r
+w_ols <- nsur * t(pop_frac) %*% x_pop %*% solve(xtx, t(x_ols))
+```
+so `sum(w_ols) ≈ nsur`.
+
+`get_mrplew_logistic_glm` stores the raw derivative without this factor:
+```r
+w_logit <- t(mrp_chain_rule_term) %*% solve(hess, t(x_ols))
+```
+so `sum(w_logit) ≈ 1`.
+
+Consequence: for a correctly specified saturated model, `w_ols ≈ w_opt` while
+`w_logit ≈ w_opt / nsur`.  The MCMC function `get_mrplew_mcmc` uses the
+`nsur`-multiplied convention (`mrplew_w <- n_obs * dmrp_dy`), consistent with
+the OLS convention but inconsistent with the logistic GLM convention.
+`compute_frequentist_sd` also assumes `sum(w) ≈ n_obs`.
+
+The test in `test_opt.R` was updated to assert each method against its own
+scale (`w_opt` for OLS, `w_opt / nsur` for logit with tolerance `1e-6`) to
+reflect this inconsistency rather than mask it.
+
+---
+
+### 8. `brms_lib.R:115–116` — `re_formula` and `allow_new_levels` declared but never used
 
 ```r
-if (id_col %in% c(names(df1), names(df2))) {
-  sprintf("ID column %d is already present, which should never happen.", id_cols)
-}
+get_ols_mcmc_weights <- function(brms_post, survey_df, pop_df, pop_frac=NULL,
+                                 re_formula=NULL, allow_new_levels=FALSE)
 ```
-There is no `stop()` or `warning()` call; the sprintf result is discarded. If
-the randomly-generated `id_col` happens to collide with an existing column name,
-execution continues silently and the downstream splitting logic will produce
-incorrect results.
+
+Neither `re_formula` nor `allow_new_levels` appears anywhere in the function
+body.  If these are intended for a future `posterior_epred` call they should be
+documented; if not needed they should be removed to avoid confusing callers.
 
 ---
 
-### 22. `brms_lib.R:43–44` — `is.null(mrp_draws) & is.null(pop_df)` uses scalar `&` in an `if`
+## Items Fixed by User
 
-In R `if` conditions, the recommended operator is `&&` (short-circuit). Using
-`&` works for scalar logicals but is non-idiomatic and will trigger a warning if
-either side is ever a vector. This pattern appears in one place.
+| # | Location | What was fixed |
+|---|---|---|
+| F1 | `binary_lib.R:46` | `runif(n_obs)` → `runif(length(y_orig))` |
+| F2 | `balance_lib.R:80` | `colnames(x2) != colnames(x2)` → `colnames(x1) != colnames(x2)` |
+| F3 | `balance_lib.R:94` | Duplicate `@param w1` → `@param w2` |
+| F4 | `balance_lib.R:57` | `id_cols` → `id_col` |
+| F5 | `binary_lib.R:32` | "expectatoins" → "expectations" |
+| F6 | `brms_lib.R:125–128` | `get_mrplew_mcmc` now called with correct argument name `mrp_draws=` |
+| F7 | `brms_lib.R:130` | Removed dangling `if (save_draws)` block (parameter was absent from signature) |
+| F8 | `brms_lib.R:131` | Removed nonsensical `expit(dloglikdy)` for OLS (copy-paste from logistic) |
+| F9 | `simulation_lib.R:138–139` | Duplicate `@param n_obs` → `@param n_obs_pop` |
+| F10 | `brms_lib.R`, `mrplew_mcmc_lib.R` | Docstrings: "Defaults to ones" → "Defaults to 1/N" |
+| F11 | `helper.R:44` | `w_opt=w_pop / count_sur` → `w_opt=frac_pop / frac_sur` (now matches `simulation_lib.R`) |
+| F12 | `brms_lib.R:96` | Comment updated to match code: now correctly reads `-sigma^{-2}(y_n - ŷ_n)` |
 
 ---
 
-### 23. `test_mrpaw.R:12–13` — `context()` is deprecated in testthat 3
+## Correction to Original Errata
 
-Both test files use `context("mrplew")`, which is deprecated since testthat 3.x
-and does nothing. The file name serves as context automatically.
+**Original errata item #4 was incorrect.**  The original review claimed the sign
+in `get_gaussian_dloglikdy_draws` was wrong.  In fact, the correct derivative is:
+
+`d/dy_i [-(y_i - ŷ_i)² / (2σ²)] = -(y_i - ŷ_i)/σ² = -resid/σ²`
+
+The code (`-1 * resid_draws / sigma_draws^2`) was always correct.  The old
+comment (before the user's fix) stated the positive sign, which was wrong.
+The user's fix to the comment was appropriate.
+
+---
+
+## Test File Issues (Acknowledged as Not Yet Fixed)
+
+| # | Location | Issue |
+|---|---|---|
+| T1 | `test_opt.R:31,34` | Calls `get_ols_weights` and `get_logit_weights`; correct names are `get_mrplew_lm` and `get_mrplew_logistic_glm` |
+| T2 | `test_mcmc.R:28` | Calls `get_logit_mcmc_weights`; correct name is `get_mrplew_logistic_brms` |
+| T3 | `test_opt.R:51`, `test_mcmc.R:48` | Accesses `$w`; correct field name is `$mrplew_w` |
+| T4 | `test_mcmc.R:39` | `aggregate_simulation_data(sim_data, y_col)` — the exported library function takes only one argument; the two-argument version is local to `helper.R` |

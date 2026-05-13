@@ -135,7 +135,7 @@ draw_response <- function(g_matrix, effect_df) {
 #' Draw survey data with some reasonable defaults
 #' @param n_groups The number of distinct groups
 #' @param n_obs The number of survey observations
-#' @param n_obs The number of population observations
+#' @param n_obs_pop The number of population observations
 #' @param degree The maximum degree of true interactions
 #'
 #' @return A list of simualted data

@@ -4,7 +4,7 @@
 #'
 #' @param brms_post The output of `brm(..., survey_df, family=binomial(link="logit"))`
 #' @param pop_df The population dataframe
-#' @param pop_frac  The weight given to each row of pop_df.  Defaults to ones.
+#' @param pop_frac  The weight given to each row of pop_df.  Defaults to 1/N
 #' @param ...  Additional arguments passed to posterior_epred
 #'
 #' @return Draws from the MrP estimate
@@ -24,7 +24,7 @@ get_mrp_draws_brms <- function(brms_post, pop_df=NULL, pop_frac=NULL, ...) {
 #' @param survey_df The survey dataframe
 #' @param mrp_draws Optional. Draws of the mrp estimate from the same posterior, brms_post.
 #' @param pop_df Optional.  The population dataframe
-#' @param pop_frac Optional.  The weight given to each row of pop_df.  Defaults to ones.
+#' @param pop_frac Optional.  The weight given to each row of pop_df.  Defaults to 1/N.
 #' @param save_draws Optional.  If true, save the posterior predictions for re-use.
 #'
 #' @return Draws from the MrP estimate, and the weight vector
@@ -93,7 +93,7 @@ get_ols_likelihood_component_draws <- function(brms_post, survey_df) {
 #'@export
 get_gaussian_dloglikdy_draws <- function(resid_draws, sigma_draws) {
     # The log likelihood derivative for the n^th datapoint is
-    # sigma^{-2} (y_n - \hat{y}_n)
+    # -sigma^{-2} (y_n - \hat{y}_n)
     dloglikdy_survey_draws <- -1 * resid_draws / (sigma_draws^2)
     return(dloglikdy_survey_draws)
 }
@@ -104,7 +104,7 @@ get_gaussian_dloglikdy_draws <- function(resid_draws, sigma_draws) {
 #' @param brms_post The output of `brm(..., survey_df, family=gaussian())`
 #' @param survey_df The survey dataframe
 #' @param pop_df The population dataframe
-#' @param pop_frac Optional.  The weight given to each row of pop_df.  Defaults to ones.
+#' @param pop_frac Optional.  The weight given to each row of pop_df.  Defaults to 1/N.
 #'
 #' @return Draws from the MrP estimate, and the weight vector
 #' whose n-th entry is d E[MrP | X, Y] / d y_n.
@@ -121,19 +121,11 @@ get_ols_mcmc_weights <- function(brms_post, survey_df, pop_df, pop_frac=NULL,
     ols_ll_draws <- get_ols_likelihood_component_draws(brms_post, survey_df)
     dloglikdy_survey_draws <- get_gaussian_dloglikdy_draws(
         resid_draws=ols_ll_draws$resid_draws, sigma_draws=ols_ll_draws$sigma_draws)
+    mrp_draws <- yhat_pop_draws %*% pop_frac
 
     result_list <- get_mrplew_mcmc(
-        yhat_pop_draws=yhat_pop_draws,
-        dloglikdy_survey_draws=dloglikdy_survey_draws,
-        pop_frac=pop_frac)
+        mrp_draws=mrp_draws,
+        dloglikdy_survey_draws=dloglikdy_survey_draws)
 
-    if (save_draws) {
-        yhat_survey_draws <- expit(dloglikdy_survey_draws)
-        result_list$sigma_draws <- ols_ll_draws$sigma_draws
-        result_list$resid_draws <- ols_ll_draws$resid_draws
-        result_list$yhat_pop_draws <- yhat_pop_draws
-        result_list$yhat_survey_draws <- yhat_survey_draws
-        result_list$dloglikdy_survey_draws <- dloglikdy_survey_draws
-    }
     return(result_list)
 }

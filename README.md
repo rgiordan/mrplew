@@ -1,39 +1,32 @@
 # mrplew: Mister P Local Equivalent Weights
 
-**This library is currently experimental and not for public use.**
+This library is currently a public port of research code!  Please
+use with care, and contact the authors (or post a Github issue)
+if you have doubts or questions.
 
-**Please don't use it unless you know and are in contact with the authors!**
 
 ## What is mrplew?
 
-Multilevel Regression with Poststratification (MrP) is a widely-used method
-for estimating population quantities from non-representative survey data. A MrP
-estimate is typically computed by fitting a regression model to survey responses,
-using that model to predict outcomes for every cell of the population, and then
-averaging those predictions weighted by the population cell sizes.
+This software package accompanies our paper, [Locally Equivalent Weights for
+Multilevel Regression and
+Poststratification](https://rgiordan.github.io/assets/mrplew_paper.pdf).
 
-`mrplew` computes **local equivalent weights** (LEWs) for MrP estimates. A LEW
-re-expresses the MrP estimate as a simple weighted average of the individual
-survey outcomes — one weight per respondent. This is useful because:
+MrPlew stands for "multilevel poststratification and regression local
+equivalent weights."  Please see our paper for more details and motivation. 
 
-- **Interpretability**: MrP weights behave like traditional survey weights, and
-  can be compared directly to raking or post-stratification weights.
-- **Diagnostics**: Covariate balance can be checked using the same tools as for
-  weighted surveys.
-- **Uncertainty**: The weighted-average representation makes variance estimation
-  straightforward.
-
-`mrplew` supports OLS (`lm`), logistic regression (`glm`), and full Bayesian
-MCMC models fitted with `brms`.
+The package `mrplew` supports OLS (`lm`), logistic regression (`glm`), and
+Gaussian or logistic Bayesian MCMC models fitted with `brms`.
 
 ## Installation
 
 ```r
 library(devtools)
-install_github("https://github.com/rgiordan/mrplew", upgrade = "never", force = TRUE)
+install_github("https://github.com/rgiordan/mrplew", force = TRUE)
 ```
 
 ## Quick start: MrPlew weights from a brms logistic model
+
+An example can be found in `examples/example.R`.  Here are some excerpts.
 
 Here is a minimal end-to-end example. It uses the built-in simulation helper,
 fits a logistic regression in `brms`, and then computes MrPlew weights.
@@ -48,18 +41,18 @@ library(mrplew)
 # ------------------------------------------------------------------
 set.seed(42)
 sim_data <- mrplew::simulate_survey_data(
-  n_groups   = 4,
-  n_obs      = 2000,
-  n_obs_pop  = 5000,
-  degree     = 2
+  n_groups  = 4,
+  n_obs     = 2000,
+  n_obs_pop = 5000,
+  degree    = 2
 )
 
 survey_df <- sim_data$survey_df   # individual survey respondents
 pop_df    <- sim_data$pop_df      # population frame
 
-# Aggregate population data (speeds up posterior prediction)
-agg_list    <- aggregate_simuilation_data(sim_data)
-pop_agg_df  <- agg_list$pop_agg_df
+# Aggregate population data by group (speeds up posterior prediction)
+agg_list   <- mrplew::aggregate_simulation_data(sim_data)
+pop_agg_df <- agg_list$pop_agg_df   # pop_agg_df$frac gives population fractions
 
 # ------------------------------------------------------------------
 # 2. Fit a logistic regression with brms
@@ -69,28 +62,36 @@ reg_form <- formula(sprintf("y ~ 1 + (%s)^2", g_sum))
 
 brms_fit <- brm(
   reg_form,
-  data    = survey_df,
-  family  = bernoulli(link = "logit"),
-  chains  = 4,
-  cores   = 4,
-  warmup  = 500,
-  iter    = 2000,
-  seed    = 1234,
-  file    = "logit_posterior"   # cache the fit
+  data   = survey_df,
+  family = bernoulli(link = "logit"),
+  chains = 4,
+  cores  = 4,
+  warmup = 500,
+  iter   = 2000,
+  seed   = 1234,
+  file   = "logit_posterior"   # cache the fit
 )
 
 # ------------------------------------------------------------------
-# 3. Compute MrPlew weights
+# 3. Compute MrP draws, then MrPlew weights
 # ------------------------------------------------------------------
-mrplew_result <- get_mrplew_logistic_brms(
-  brms_post  = brms_fit,
-  survey_df  = survey_df,
-  pop_df     = pop_agg_df,
-  pop_w      = pop_agg_df$w
+
+# First get posterior draws of the MrP estimate.
+# pop_frac gives the fraction of the population in each aggregated cell.
+mrp_draws <- mrplew::get_mrp_draws_brms(
+  brms_post = brms_fit,
+  pop_df    = pop_agg_df,
+  pop_frac  = pop_agg_df$frac
 )
 
-# The MrP estimate (posterior mean)
-cat("MrP estimate:", mean(mrplew_result$mrp_draws), "\n")
+cat("MrP estimate:", mean(mrp_draws), "\n")
+
+# Then compute the local equivalent weights using those draws.
+mrplew_result <- mrplew::get_mrplew_logistic_brms(
+  brms_post = brms_fit,
+  survey_df = survey_df,
+  mrp_draws = mrp_draws
+)
 
 # One weight per survey respondent — use these just like survey weights
 weights <- mrplew_result$mrplew_w
@@ -107,12 +108,12 @@ well-specified model should produce near-zero imbalance.
 # Use a richer formula to check balance on higher-order terms
 balance_form <- formula(sprintf("y ~ 1 + (%s)^4", g_sum))
 
-balance_result <- check_covariate_balance(
+balance_result <- mrplew::check_covariate_balance(
   mrplew_list = mrplew_result,
   survey_df   = survey_df,
   pop_df      = pop_agg_df,
   reg_form    = balance_form,
-  pop_w       = pop_agg_df$w
+  pop_frac    = pop_agg_df$frac
 )
 
 # Tidy balance summary
@@ -123,6 +124,29 @@ The `balance_df` table reports the weighted population mean, the MrPlew-weighted
 survey mean, and the difference for each covariate term. Differences close to
 zero indicate good balance.
 
+## Variance estimation
+
+MrPlew weights make frequentist variance estimation simple. Given the model
+residuals at the survey observations, `compute_frequentist_sd` returns a
+standard deviation for the MrP estimate:
+
+```r
+# Get posterior mean predictions at the survey points
+yhat_draws <- brms::posterior_epred(brms_fit, newdata = survey_df)
+yhat       <- colMeans(yhat_draws)
+resid      <- survey_df$y - yhat
+
+# OLS weights also work here
+lm_fit     <- lm(reg_form, survey_df)
+ols_result <- mrplew::get_mrplew_lm(lm_fit, survey_df, pop_df)
+
+freq_sd <- mrplew::compute_frequentist_sd(w = ols_result$mrplew_w, resid = resid)
+cat("Frequentist SD:", freq_sd, "\n")
+
+# For comparison, the posterior SD from the MCMC draws:
+cat("Posterior SD:  ", sd(mrp_draws), "\n")
+```
+
 ## OLS and frequentist logistic weights
 
 `mrplew` also provides closed-form weights for frequentist models:
@@ -130,13 +154,13 @@ zero indicate good balance.
 ```r
 # OLS
 lm_fit     <- lm(reg_form, survey_df)
-ols_result <- get_mrplew_lm(lm_fit, survey_df, pop_df)
-ols_result$mrp          # MrP point estimate
-ols_result$mrplew_w     # one weight per respondent
+ols_result <- mrplew::get_mrplew_lm(lm_fit, survey_df, pop_df)
+ols_result$mrp       # MrP point estimate
+ols_result$mrplew_w  # one weight per respondent
 
 # Logistic regression (glm)
-glm_fit      <- glm(reg_form, survey_df, family = binomial(link = "logit"))
-glm_result   <- get_mrplew_logistic_glm(glm_fit, survey_df, pop_df)
+glm_fit    <- glm(reg_form, survey_df, family = binomial(link = "logit"))
+glm_result <- mrplew::get_mrplew_logistic_glm(glm_fit, survey_df, pop_df)
 glm_result$mrp
 glm_result$mrplew_w
 ```

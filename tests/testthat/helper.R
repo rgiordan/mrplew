@@ -26,13 +26,13 @@ aggregate_simulation_data <- function(sim_data, resp="y") {
     sim_data$survey_df %>%
     group_by(pick(all_of(c(g_cols, "s")))) %>%
     summarize(count=n(), ybar=mean(.data[[resp]]), ey=mean(ey), .groups="drop") %>%
-    mutate(w=count / sum(count))
+    mutate(frac=count / sum(count))
 
   pop_agg_df <-
     sim_data$pop_df %>%
     group_by(pick(all_of(c(g_cols, "s")))) %>%
     summarize(count=n(), ybar=mean(.data[[resp]]), ey=mean(ey), .groups="drop") %>%
-    mutate(w=count / sum(count))
+    mutate(frac=count / sum(count))
 
   # Compare the averages and weights directly from the population
   # to the sample.
@@ -41,7 +41,7 @@ aggregate_simulation_data <- function(sim_data, resp="y") {
     survey_agg_df,
     by=c(g_cols, "s"),
     suffix=c("_pop", "_sur")) %>%
-    mutate(w_opt=w_pop / count_sur)
+    mutate(w_opt=frac_pop / frac_sur)
 
   return(list(joint_df=joint_df, survey_agg_df=survey_agg_df, pop_agg_df=pop_agg_df))
 }

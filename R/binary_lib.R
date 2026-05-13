@@ -28,7 +28,7 @@ get_maximum_delta_for_e_y_perturbation <- function(e_y, x) {
 #' y_orig and an estimate of their expectation, e_y.
 #'
 #' @param y_orig A vector of binary {0, 1} draws
-#' @param e_y A vector of estimated expectatoins of y_orig
+#' @param e_y A vector of estimated expectations of y_orig
 #' @param e_y_new A vector of expectations of the new binary data
 #' @param unif_base (Optional) Uniform [0,1] random numbers to condition on.
 #'                  If unspecified, new draws are taken.
@@ -43,7 +43,7 @@ get_maximum_delta_for_e_y_perturbation <- function(e_y, x) {
 #'@export
 draw_conditional_binary_data <- function(y_orig, e_y, e_y_new, unif_base=NULL) {
   if (is.null(unif_base)) {
-    unif_base <- runif(n_obs)
+    unif_base <- runif(length(y_orig))
   }
 
   # Draw from the uniform conditional on y_orig and e_y

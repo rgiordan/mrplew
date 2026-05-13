@@ -54,7 +54,7 @@ get_consistent_regressors <- function(form, df1, df2, frame=FALSE) {
   
   if (id_col %in% c(names(df1), names(df2))) {
     sprintf("ID column %d is already present, which should never happen.",
-            id_cols)
+            id_col)
   }
   df1[[id_col]] <- 1
   df2[[id_col]] <- 2
@@ -77,7 +77,7 @@ get_consistent_regressors <- function(form, df1, df2, frame=FALSE) {
 
 check_balance_matrices <- function(x1, x2) {
   stopifnot(ncol(x1) == ncol(x2))
-  if (any(colnames(x2) != colnames(x2))) {
+  if (any(colnames(x1) != colnames(x2))) {
     warning_text <- paste0(
       "The column names of the covariates do not match: ",
       paste0("(", colnames(x1), ")", collapse=", "),
@@ -91,7 +91,7 @@ check_balance_matrices <- function(x1, x2) {
 #' @param x1 A matrix of regressor values
 #' @param x2 A matrix of regressor values consistently coded with x1
 #' @param w1 A vector of normalized weights for x1, summing to ~ 1
-#' @param w1 A vector of normalized weights for x2, summing to ~ 1
+#' @param w2 A vector of normalized weights for x2, summing to ~ 1
 #' 
 #'@export
 get_balance_df <- function(x1, x2, w1, w2) {
